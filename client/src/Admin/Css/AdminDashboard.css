@@ -1,0 +1,86 @@
+/* General Styles */
+.container {
+    padding: 1rem;
+    font-family: Arial, sans-serif;
+  }
+  
+  .heading {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  .filters {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .searchBar,
+  .dropdown {
+    padding: 0.5rem;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .message {
+    text-align: center;
+    color: red;
+    margin-bottom: 1rem;
+  }
+  
+  .emptyMessage {
+    text-align: center;
+    margin-top: 2rem;
+    font-size: 1.1rem;
+    color: #555;
+  }
+  
+  /* Table Styles */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow-x: auto;
+    display: block;
+  }
+  
+  .th,
+  .td {
+    padding: 0.75rem;
+    text-align: left;
+    border: 1px solid #ccc;
+    min-width: 120px;
+  }
+  
+  .td div {
+    margin-bottom: 4px;
+  }
+  
+  @media (max-width: 768px) {
+    .heading {
+      font-size: 1.2rem;
+    }
+  
+    .filters {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  
+    .searchBar,
+    .dropdown {
+      width: 100%;
+    }
+  
+    .table {
+      font-size: 0.9rem;
+    }
+  
+    .th,
+    .td {
+      padding: 0.5rem;
+    }
+  }
+  
