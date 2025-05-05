@@ -29,7 +29,7 @@ const storage = multer.memoryStorage(); // Use memory storage instead of disk st
 const upload = multer({ storage });
 
 // Connect to MongoDB
-mongoose.connect('mongodb+srv://22bca45:92827262@cluster0.xifci.mongodb.net/shivdb?retryWrites=true&w=majority&appName=Cluster0')
+mongoose.connect('mongodb+srv://roshangamit009:92827262@cluster0.vvp3jit.mongodb.net/shivdb?retryWrites=true&w=majority&appName=Cluster0')
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
