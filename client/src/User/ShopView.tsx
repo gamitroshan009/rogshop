@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import 'bootstrap/dist/css/bootstrap.min.css'; // Import Bootstrap CSS
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const ShopView = () => {
   const { shopId } = useParams();
@@ -16,13 +16,13 @@ const ShopView = () => {
   const [selectedQuantities, setSelectedQuantities] = useState<{ [key: string]: number }>({});
   const [selectedProducts, setSelectedProducts] = useState<{ [key: string]: boolean }>({});
   const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [loading, setLoading] = useState(true);  // State for loading
+  const [loading, setLoading] = useState(true);
   const userEmail = localStorage.getItem('userEmail');
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        setLoading(true);  // Set loading to true before fetching
+        setLoading(true);
         const response = await axios.get(
           `http://localhost:5000/api/products?shopkeeperId=${shopId}&shopName=${shopName}`
         );
@@ -30,7 +30,7 @@ const ShopView = () => {
       } catch (error) {
         console.error('Error fetching products:', error);
       } finally {
-        setLoading(false);  // Set loading to false after fetching
+        setLoading(false);
       }
     };
     fetchProducts();
@@ -125,7 +125,6 @@ const ShopView = () => {
 
   return (
     <div className="container-fluid">
-      {/* Internal CSS for Fade-In Effect */}
       <style>
         {`
           .fade-in {
@@ -134,24 +133,17 @@ const ShopView = () => {
           }
 
           @keyframes fadeIn {
-            0% {
-              opacity: 0;
-            }
-            100% {
-              opacity: 1;
-            }
+            0% { opacity: 0; }
+            100% { opacity: 1; }
           }
         `}
       </style>
 
-      {/* Header */}
       <header className="bg-primary text-white p-3">
         <div className="d-flex justify-content-between align-items-center flex-wrap">
-          {/* Shop Name Centered */}
           <h1 className="fs-4 fw-bold mb-2 mb-md-0 mx-auto">{shopName}</h1>
         </div>
         <div className="d-flex justify-content-between align-items-center mt-2">
-          {/* Search Bar on Left */}
           <div className="d-flex justify-content-start">
             <input
               type="text"
@@ -161,8 +153,6 @@ const ShopView = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-
-          {/* Email & Dropdown on Right */}
           <div className="d-flex justify-content-end">
             <span
               className="fw-bold text-white cursor-pointer"
@@ -172,10 +162,7 @@ const ShopView = () => {
             </span>
             {dropdownVisible && (
               <div className="dropdown-menu show position-absolute end-0 mt-2">
-                <button
-                  className="dropdown-item"
-                  onClick={() => handleDropdownOption('myOrders')}
-                >
+                <button className="dropdown-item" onClick={() => handleDropdownOption('myOrders')}>
                   🧾 My Orders
                 </button>
                 <button className="dropdown-item" onClick={() => handleDropdownOption('cart')}>
@@ -191,11 +178,8 @@ const ShopView = () => {
       </header>
 
       <div className="row mt-3">
-        {/* Sidebar */}
         <aside className="col-12 col-md-3 mb-3">
           <h3 className="fs-5 d-none d-md-block">Categories</h3>
-
-          {/* List Box for Mobile */}
           <div className="d-md-none">
             <label htmlFor="categoriesSelect" className="form-label">
               Select Category
@@ -214,8 +198,6 @@ const ShopView = () => {
               ))}
             </select>
           </div>
-
-          {/* List for Larger Screens */}
           <ul className="list-group d-none d-md-block">
             <li
               className={`list-group-item ${selectedCategory === '' ? 'active' : ''}`}
@@ -235,7 +217,6 @@ const ShopView = () => {
           </ul>
         </aside>
 
-        {/* Main Content */}
         <main className="col-12 col-md-9">
           {loading ? (
             <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '300px' }}>
@@ -243,15 +224,60 @@ const ShopView = () => {
                 <span className="visually-hidden">Loading...</span>
               </div>
             </div>
+          ) : selectedCategory === '' ? (
+            categories.map((category, catIndex) => {
+              const categoryProducts = filteredProducts.filter(
+                (product) => product.category === category
+              );
+              if (categoryProducts.length === 0) return null;
+              return (
+                <div key={catIndex}>
+                  <h4 className="mb-3 mt-4">{category}</h4>
+                  <div className="row">
+                    {categoryProducts.map((product, index) => (
+                      <div
+                        key={product._id}
+                        className={`col-6 col-sm-3 col-md-4 mb-3 product-item fade-in`}
+                        style={{ animationDelay: `${index * 0.2}s` }}
+                      >
+                        <div className="card">
+                          <div className="image-container">
+                            <img
+                              src={`data:image/jpeg;base64,${product.productImage}`}
+                              className="card-img-top product-image"
+                              alt={product.productName}
+                            />
+                          </div>
+                          <div className="card-body">
+                            <input
+                              type="checkbox"
+                              className="form-check-input me-2"
+                              checked={!!selectedProducts[product._id]}
+                              onChange={() => handleCheckboxChange(product._id)}
+                            />
+                            <h5 className="card-title">{product.productName}</h5>
+                            <p className="card-text"><strong>Price:</strong> ₹{product.price}</p>
+                            <p className="card-text"><strong>Stock:</strong> {product.quantity}</p>
+                            <div className="d-flex align-items-center">
+                              <button className="btn btn-sm btn-primary me-2" onClick={() => decrementQuantity(product._id)}>-</button>
+                              <span className="quantity-box">{selectedQuantities[product._id] || 1}</span>
+                              <button className="btn btn-sm btn-primary ms-2" onClick={() => incrementQuantity(product._id)}>+</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
           ) : (
             <div className="row">
               {filteredProducts.map((product, index) => (
                 <div
                   key={product._id}
                   className={`col-6 col-sm-3 col-md-4 mb-3 product-item fade-in`}
-                  style={{
-                    animationDelay: `${index * 0.2}s`,
-                  }}
+                  style={{ animationDelay: `${index * 0.2}s` }}
                 >
                   <div className="card">
                     <div className="image-container">
@@ -269,28 +295,12 @@ const ShopView = () => {
                         onChange={() => handleCheckboxChange(product._id)}
                       />
                       <h5 className="card-title">{product.productName}</h5>
-                      <p className="card-text">
-                        <strong>Price:</strong> ₹{product.price}
-                      </p>
-                      <p className="card-text">
-                        <strong>Stock:</strong> {product.quantity}
-                      </p>
+                      <p className="card-text"><strong>Price:</strong> ₹{product.price}</p>
+                      <p className="card-text"><strong>Stock:</strong> {product.quantity}</p>
                       <div className="d-flex align-items-center">
-                        <button
-                          className="btn btn-sm btn-primary me-2"
-                          onClick={() => decrementQuantity(product._id)}
-                        >
-                          -
-                        </button>
-                        <span className="quantity-box">
-                          {selectedQuantities[product._id] || 1}
-                        </span>
-                        <button
-                          className="btn btn-sm btn-primary ms-2"
-                          onClick={() => incrementQuantity(product._id)}
-                        >
-                          +
-                        </button>
+                        <button className="btn btn-sm btn-primary me-2" onClick={() => decrementQuantity(product._id)}>-</button>
+                        <span className="quantity-box">{selectedQuantities[product._id] || 1}</span>
+                        <button className="btn btn-sm btn-primary ms-2" onClick={() => incrementQuantity(product._id)}>+</button>
                       </div>
                     </div>
                   </div>

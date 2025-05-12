@@ -5,6 +5,7 @@ interface Product {
   productName: string;
   quantity: number;
   price: number;
+  category?: string;
 }
 
 interface Order {
@@ -113,7 +114,6 @@ const ShopkeeperOrder = () => {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                 cursor: 'pointer',
                 borderLeft: `5px solid ${order.received.toLowerCase() === 'complete' ? 'green' : 'red'}`,
-            
                 transition: 'box-shadow 0.3s ease',
               }}
             >
@@ -148,8 +148,10 @@ const ShopkeeperOrder = () => {
               padding: '2rem',
               borderRadius: '8px',
               width: '90%',
-              maxWidth: '500px',
+              maxWidth: '600px',
               boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              overflowY: 'auto',
+              maxHeight: '90vh',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -163,15 +165,57 @@ const ShopkeeperOrder = () => {
                 {selectedOrder.received}
               </span>
             </p>
-            <ul>
-              {selectedOrder.products.map((product, i) => (
-                <li key={i}>
-                  {product.productName} x{product.quantity} = ₹{(product.price * product.quantity).toFixed(2)}
-                </li>
-              ))}
-            </ul>
-            <p><strong>Total Quantity:</strong> {selectedOrder.products.reduce((sum, p) => sum + p.quantity, 0)}</p>
-            <p><strong>Total Price:</strong> ₹{selectedOrder.products.reduce((sum, p) => sum + p.price * p.quantity, 0).toFixed(2)}</p>
+
+            {/* Grouped by Category Table */}
+            {Object.entries(
+              selectedOrder.products.reduce((groups, product) => {
+                const category = product.category || 'Uncategorized';
+                if (!groups[category]) groups[category] = [];
+                groups[category].push(product);
+                return groups;
+              }, {} as Record<string, Product[]>)
+            ).map(([category, products]) => (
+              <div key={category} style={{ marginBottom: '2rem' }}>
+                {/* Category Header with lines */}
+                <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0' }}>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: '#ccc' }} />
+                  <div style={{ padding: '0 1rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    Category: {category}
+                  </div>
+                  <div style={{ flex: 1, height: '1px', backgroundColor: '#ccc' }} />
+                </div>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f9f9f9' }}>
+                      <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Product</th>
+                      <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Qty</th>
+                      <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Price</th>
+                      <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map((product, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>{product.productName}</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>{product.quantity}</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>₹{product.price}</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>
+                          ₹{(product.quantity * product.price).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+
+            <p style={{ marginTop: '1rem' }}>
+              <strong>Total Quantity:</strong> {selectedOrder.products.reduce((sum, p) => sum + p.quantity, 0)}
+            </p>
+            <p>
+              <strong>Total Price:</strong> ₹{selectedOrder.products.reduce((sum, p) => sum + p.price * p.quantity, 0).toFixed(2)}
+            </p>
 
             {selectedOrder.received.toLowerCase() !== 'complete' && (
               <button

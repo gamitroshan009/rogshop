@@ -502,6 +502,28 @@ app.post('/api/orders', async (req, res) => {
   }
 
   try {
+    // Fetch product categories and include them in the order
+    const productsWithCategories = await Promise.all(
+      products.map(async (product) => {
+        const dbProduct = await ShopkeeperProducts.findOne({
+          shopkeeperId: shopId,
+          shopName,
+          productName: product.productName,
+        });
+
+        if (!dbProduct) {
+          throw new Error(`Product "${product.productName}" not found`);
+        }
+
+        return {
+          productName: product.productName,
+          quantity: product.quantity,
+          price: product.price,
+          category: dbProduct.category, // Include the category from the database
+        };
+      })
+    );
+
     // Create a new order
     const newOrder = new Order({
       shopId,
@@ -509,7 +531,7 @@ app.post('/api/orders', async (req, res) => {
       email,
       mobileNo,
       address,
-      products,
+      products: productsWithCategories, // Use the products with categories
     });
 
     await newOrder.save();
