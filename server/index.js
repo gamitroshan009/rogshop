@@ -81,63 +81,24 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// Update a product by ID
-app.put('/api/products/:id', async (req, res) => {
-  const { id } = req.params;
-  const { productName, price, quantity } = req.body;
-
-  try {
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      { productName, price, quantity },
-      { new: true }
-    );
-    res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
-  } catch (error) {
-    console.error('Error updating product:', error);
-    res.status(500).json({ message: 'Error updating product', error: error.message });
-  }
-});
-
 // Update a product by productName
 app.put('/api/products', async (req, res) => {
-  const { productName, newProductName, price, quantity } = req.body;
+  const { productName, newProductName, price, quantity, category } = req.body;
 
-  if (!productName || !newProductName || !price || !quantity) {
-    return res.status(400).json({ message: 'All fields are required' });
+  if (!productName) {
+    return res.status(400).json({ message: 'Product name is required' });
   }
 
   try {
     const updatedProduct = await ShopkeeperProducts.findOneAndUpdate(
-      { productName }, // Find the product by productName
-      { productName: newProductName, price: Number(price), quantity: Number(quantity) }, // Update fields
-      { new: true } // Return the updated document
-    );
-
-    if (!updatedProduct) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-
-    res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
-  } catch (error) {
-    console.error('Error updating product:', error);
-    res.status(500).json({ message: 'Error updating product', error: error.message });
-  }
-});
-
-// Update a product by shopName and productName in ShopkeeperProducts table
-app.put('/api/products', async (req, res) => {
-  const { shopName, productName, newProductName, price, quantity } = req.body;
-
-  if (!shopName || !productName || !newProductName || !price || !quantity) {
-    return res.status(400).json({ message: 'All fields are required' });
-  }
-
-  try {
-    const updatedProduct = await ShopkeeperProducts.findOneAndUpdate(
-      { shopName, productName }, // Find the product by shopName and productName
-      { productName: newProductName, price: Number(price), quantity: Number(quantity) }, // Update fields
-      { new: true } // Return the updated document
+      { productName }, // Find the product by its current name
+      {
+        productName: newProductName || productName, // Update the product name if a new name is provided
+        price,
+        quantity,
+        category,
+      },
+      { new: true } // Return the updated product
     );
 
     if (!updatedProduct) {
@@ -563,8 +524,6 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-
-
 // Get all orders (Admin Dashboard)
 app.get('/api/admin/orders', async (req, res) => {
   try {
@@ -575,7 +534,6 @@ app.get('/api/admin/orders', async (req, res) => {
     res.status(500).json({ message: 'Error fetching all orders', error: error.message });
   }
 });
-
 
 // Get orders for a specific shop by shopName and shopId
 app.get('/api/orders/shop', async (req, res) => {
@@ -593,8 +551,6 @@ app.get('/api/orders/shop', async (req, res) => {
     res.status(500).json({ message: 'Error fetching orders', error: error.message });
   }
 });
-
-
 
 // Update product stock when an order is placed
 app.put('/api/products/update-stock', async (req, res) => {

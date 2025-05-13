@@ -5,11 +5,15 @@ interface Product {
   productName: string;
   price: number;
   quantity: number;
+  category: string;
   isEditing?: boolean;
+  newProductName?: string; // For updating the product name
+  newCategory?: string; // For updating the category
 }
 
 const ManageProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]); // State for all categories
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,7 +26,14 @@ const ManageProducts = () => {
         const response = await axios.get('http://localhost:5000/api/products', {
           params: { shopkeeperId },
         });
-        setProducts(response.data.map((p: Product) => ({ ...p, isEditing: false })));
+        setProducts(
+          response.data.map((p: Product) => ({
+            ...p,
+            isEditing: false,
+            newProductName: p.productName,
+            newCategory: p.category,
+          }))
+        );
       } catch (err) {
         setError('Failed to fetch products');
       } finally {
@@ -30,7 +41,19 @@ const ManageProducts = () => {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/products-categories', {
+          params: { shopkeeperId },
+        });
+        setCategories(response.data.categories || []); // Populate categories
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+
     fetchProducts();
+    fetchCategories();
   }, [shopkeeperId]);
 
   const toggleEdit = (productName: string) => {
@@ -41,24 +64,28 @@ const ManageProducts = () => {
     );
   };
 
-  const handleChange = (productName: string, field: keyof Product, value: string) => {
+  const handleChange = (
+    productName: string,
+    field: keyof Product,
+    value: string
+  ) => {
     setProducts((prev) =>
       prev.map((p) =>
         p.productName === productName
-          ? { ...p, [field]: field === 'price' || field === 'quantity' ? Number(value) : value }
+          ? { ...p, [field]: value }
           : p
       )
     );
   };
 
   const handleSave = async (product: Product) => {
-    
     try {
       await axios.put('http://localhost:5000/api/products', {
         productName: product.productName,
-        newProductName: product.productName,
+        newProductName: product.newProductName,
         price: product.price,
         quantity: product.quantity,
+        category: product.newCategory,
       });
       toggleEdit(product.productName);
       alert(`✅ Product "${product.productName}" updated successfully.`);
@@ -112,24 +139,29 @@ const ManageProducts = () => {
           <thead>
             <tr>
               <th style={styles.th}>Product Name</th>
+              <th style={styles.th}>New Product Name</th>
               <th style={styles.th}>Price</th>
               <th style={styles.th}>Quantity</th>
+              <th style={styles.th}>Category</th>
+              <th style={styles.th}>New Category</th>
               <th style={styles.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredProducts.map((product) => (
               <tr key={product.productName}>
+                <td style={styles.td}>{product.productName}</td>
                 <td style={styles.td}>
                   {product.isEditing ? (
                     <input
-                      value={product.productName}
+                      value={product.newProductName}
                       onChange={(e) =>
-                        handleChange(product.productName, 'productName', e.target.value)
+                        handleChange(product.productName, 'newProductName', e.target.value)
                       }
+                      style={styles.input}
                     />
                   ) : (
-                    product.productName
+                    product.newProductName
                   )}
                 </td>
                 <td style={styles.td}>
@@ -140,6 +172,7 @@ const ManageProducts = () => {
                       onChange={(e) =>
                         handleChange(product.productName, 'price', e.target.value)
                       }
+                      style={styles.input}
                     />
                   ) : (
                     product.price
@@ -153,9 +186,30 @@ const ManageProducts = () => {
                       onChange={(e) =>
                         handleChange(product.productName, 'quantity', e.target.value)
                       }
+                      style={styles.input}
                     />
                   ) : (
                     product.quantity
+                  )}
+                </td>
+                <td style={styles.td}>{product.category}</td>
+                <td style={styles.td}>
+                  {product.isEditing ? (
+                    <select
+                      value={product.newCategory}
+                      onChange={(e) =>
+                        handleChange(product.productName, 'newCategory', e.target.value)
+                      }
+                      style={styles.input}
+                    >
+                      {categories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    product.newCategory
                   )}
                 </td>
                 <td style={styles.td}>
@@ -185,13 +239,13 @@ const ManageProducts = () => {
             <p><strong>Product Name:</strong>{' '}
               {product.isEditing ? (
                 <input
-                  value={product.productName}
+                  value={product.newProductName}
                   onChange={(e) =>
-                    handleChange(product.productName, 'productName', e.target.value)
+                    handleChange(product.productName, 'newProductName', e.target.value)
                   }
                 />
               ) : (
-                product.productName
+                product.newProductName
               )}
             </p>
             <p><strong>Price:</strong>{' '}
@@ -220,6 +274,24 @@ const ManageProducts = () => {
                 product.quantity
               )}
             </p>
+            <p><strong>Category:</strong>{' '}
+              {product.isEditing ? (
+                <select
+                  value={product.newCategory}
+                  onChange={(e) =>
+                    handleChange(product.productName, 'newCategory', e.target.value)
+                  }
+                >
+                  {categories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                product.newCategory
+              )}
+            </p>
             <div style={styles.cardActions}>
               {product.isEditing ? (
                 <button style={styles.saveButton} onClick={() => handleSave(product)}>Save</button>
@@ -237,9 +309,9 @@ const ManageProducts = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
-    maxWidth: '800px',
+    maxWidth: '1000px',
     margin: '2rem auto',
-    padding: '2rem',
+    padding: '1rem',
     textAlign: 'center',
     border: '1px solid #ddd',
     borderRadius: '10px',
@@ -257,7 +329,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   searchInput: {
     padding: '0.6rem 1rem',
     width: '100%',
-    maxWidth: '400px',
+    maxWidth: '500px',
     borderRadius: '8px',
     border: '1px solid #ccc',
     fontSize: '1rem',
@@ -270,7 +342,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '2rem',
   },
   tableContainer: {
-    display: window.innerWidth > 768 ? 'block' : 'none',
+    overflowX: 'auto',
   },
   table: {
     width: '100%',
@@ -287,6 +359,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     border: '1px solid #ddd',
     padding: '0.75rem',
     textAlign: 'left',
+  },
+  input: {
+    width: '100%',
+    padding: '0.5rem',
+    borderRadius: '5px',
+    border: '1px solid #ccc',
   },
   cardContainer: {
     display: window.innerWidth <= 768 ? 'flex' : 'none',
