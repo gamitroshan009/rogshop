@@ -9,11 +9,12 @@ const path = require('path'); // For handling file paths
 const Product = require('./models/Product'); // Import the Product model
 const User = require('./models/User'); // Assuming User model is in 'models/User.js'
 const Shopkeeper = require('./models/Shopkeeper'); // Import the Shopkeeper model
-const ShopkeeperProducts = require('./models/ShopkeeperProducts'); // Import the ShopkeeperProducts model
+const ShopkeeperProducts = require('./models/ShopkeeperProducts');
 const ProductsCategories = require('./models/ProductsCategories'); // Import the ProductsCategories model
 const Cart = require('./models/Cart'); // Import the Cart model
 const Order = require('./models/Order'); // Import the Order model
 const { v4: uuidv4 } = require('uuid'); // Import uuid
+const sharp = require('sharp'); // Import sharp for image processing
 
 // Define Category model
 const Category = mongoose.model('Category', new mongoose.Schema({
@@ -33,50 +34,37 @@ mongoose.connect('mongodb+srv://roshangamit009:92827262@cluster0.vvp3jit.mongodb
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// Add a new product with image upload (Base64)
-app.post('/api/products', upload.single('productImage'), async (req, res) => {
-  const { shopkeeperId, shopName, productName, price, quantity, category } = req.body;
-
-  if (!shopkeeperId || !shopName || !productName || !price || !quantity || !category || !req.file) {
-    return res.status(400).json({ message: 'All fields are required' });
+// Add or update products array for a shopkeeper (no image)
+app.post('/api/products', async (req, res) => {
+  const { shopkeeperId, shopName, products } = req.body;
+  if (!shopkeeperId || !shopName || !Array.isArray(products)) {
+    return res.status(400).json({ message: 'shopkeeperId, shopName, and products array are required' });
   }
-
   try {
-    // Convert the uploaded image to Base64
-    const productImage = req.file.buffer.toString('base64');
-
-    const newProduct = new ShopkeeperProducts({
-      shopkeeperId,
-      shopName,
-      productImage, // Save Base64 string in the database
-      productName,
-      price,
-      quantity,
-      category, // Save category in the database
-    });
-
-    await newProduct.save();
-    res.status(201).json({ message: 'Product added successfully', product: newProduct });
+    let shopProducts = await ShopkeeperProducts.findOne({ shopkeeperId, shopName });
+    if (shopProducts) {
+      shopProducts.products = products;
+      await shopProducts.save();
+    } else {
+      shopProducts = new ShopkeeperProducts({ shopkeeperId, shopName, products });
+      await shopProducts.save();
+    }
+    res.status(200).json({ message: 'Products saved successfully', shopProducts });
   } catch (error) {
-    console.error('Error adding product:', error);
-    res.status(500).json({ message: 'Error adding product', error: error.message });
+    res.status(500).json({ message: 'Error saving products', error: error.message });
   }
 });
 
-// Get products by shopkeeperId, shopName, or productName
+// Get products array for a shopkeeper/shop
 app.get('/api/products', async (req, res) => {
-  const { shopkeeperId, shopName, productName } = req.query;
-
-  const query = {};
-  if (shopkeeperId) query.shopkeeperId = shopkeeperId;
-  if (shopName) query.shopName = shopName;
-  if (productName) query.productName = productName;
-
+  const { shopkeeperId, shopName } = req.query;
+  if (!shopkeeperId || !shopName) {
+    return res.status(400).json({ message: 'shopkeeperId and shopName are required' });
+  }
   try {
-    const products = await ShopkeeperProducts.find(query);
-    res.status(200).json(products);
+    const shopProducts = await ShopkeeperProducts.findOne({ shopkeeperId, shopName });
+    res.status(200).json(shopProducts ? shopProducts.products : []);
   } catch (error) {
-    console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Error fetching products', error: error.message });
   }
 });

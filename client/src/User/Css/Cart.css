@@ -1,160 +1,118 @@
-.cart-container {
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 2rem;
-  border: 1px solid #ddd;
+/* Full-Screen Overlay to Block Interactions */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.progress-bar-container {
+  width: 80%;
+  max-width: 500px;
+  background-color: #e0e0e0;
   border-radius: 10px;
-  background-color: #f9f9f9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 20px;
+  background-color: #4caf50;
+  text-align: center;
+  color: white;
+  line-height: 20px;
+  border-radius: 10px;
+}
+
+/* Other existing styles */
+.cart-container {
+  font-family: Arial, sans-serif;
+  padding: 20px;
 }
 
 .cart-heading {
-  text-align: center;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
 }
 
-.cart-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
+.shop-header {
+  font-size: 18px;
+  font-weight: bold;
 }
 
-.cart-table th,
-.cart-table td {
+.shop-divider {
+  margin: 10px 0;
   border-bottom: 1px solid #ddd;
-  padding: 0.5rem;
-  text-align: left;
 }
 
-.cart-select {
-  padding: 0.25rem;
-  width: 100%;
-}
-
-.remove-button {
-  background-color: #dc3545;
-  color: #fff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.cart-summary {
-  text-align: right;
-  margin-bottom: 1rem;
-}
-
-.cart-summary-text {
-  font-size: 1.1rem;
-}
-
-.order-button {
-  display: block;
-  margin: 0 auto;
-  padding: 0.75rem 1.5rem;
-  background-color: #28a745;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.order-form {
-  margin-top: 2rem;
-  padding: 1rem;
-  border: 1px solid #ccc;
+.mobile-product-card {
+  margin-bottom: 15px;
+  padding: 10px;
+  border: 1px solid #ddd;
   border-radius: 5px;
   background-color: #fff;
 }
 
-.order-form input,
-.order-form textarea {
-  display: block;
-  width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+.mobile-product-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
 }
 
-.submit-button {
-  background-color: #007bff;
-  color: #fff;
+.mobile-product-label {
+  font-weight: bold;
+}
+
+.remove-button {
+  background-color: #f44336;
+  color: white;
+  padding: 5px 10px;
   border: none;
-  padding: 0.75rem 1.5rem;
   border-radius: 5px;
   cursor: pointer;
 }
 
-.empty-message {
-  text-align: center;
-  font-size: 1.2rem;
-  color: #777;
+.remove-button:hover {
+  background-color: #d32f2f;
 }
 
-/* ======================= */
-/* Responsive Styling Here */
-/* ======================= */
-@media (max-width: 768px) {
-  .cart-container {
-    padding: 1rem;
-  }
-
-  .cart-heading {
-    font-size: 1.25rem;
-    text-align: center;
-    margin-bottom: 1rem;
-  }
-
-  .shop-header {
-    text-align: center;
-    font-weight: bold;
-    margin: 1rem 0 0.5rem;
-    font-size: 1.1rem;
-  }
-
-  .shop-divider {
-    border-top: 1px solid #ccc;
-    margin-bottom: 0.5rem;
-  }
-
-  .mobile-product-card {
-    display: flex;
-    flex-direction: column;
-    background-color: #fff;
-    border-radius: 6px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  }
-
-  .mobile-product-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.95rem;
-    margin: 0.25rem 0;
-  }
-
-  .mobile-product-label {
-    font-weight: bold;
-    color: #333;
-  }
-
-  .order-button,
-  .submit-button {
-    width: 100%;
-    font-size: 1rem;
-    margin-top: 1rem;
-  }
-
-  .cart-summary {
-    text-align: center;
-    font-size: 1rem;
-    font-weight: 500;
-    margin-top: 1rem;
-  }
+.cart-summary {
+  font-weight: bold;
+  margin-top: 20px;
 }
 
+.order-button {
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 20px;
+}
 
+.order-button:hover {
+  background-color: #388e3c;
+}
+
+.order-form input,
+.order-form textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+.submit-button {
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+}

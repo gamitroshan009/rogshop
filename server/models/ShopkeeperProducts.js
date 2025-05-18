@@ -1,13 +1,16 @@
 const mongoose = require('mongoose');
 
-const ShopkeeperProductsSchema = new mongoose.Schema({
-  shopkeeperId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shopkeeper', required: true }, // Reference to Shopkeeper
-  shopName: { type: String, required: true },
-  productImage: { type: String, required: true }, // Store Base64 string
+const ProductSchema = new mongoose.Schema({
   productName: { type: String, required: true },
   price: { type: Number, required: true },
   quantity: { type: Number, required: true },
-  category: { type: String, required: true }, // Add category field
-}, { timestamps: true });
+  category: { type: String, required: true },
+});
+
+const ShopkeeperProductsSchema = new mongoose.Schema({
+  shopkeeperId: { type: String, required: true },
+  shopName: { type: String, required: true },
+  products: [ProductSchema],
+});
 
 module.exports = mongoose.model('ShopkeeperProducts', ShopkeeperProductsSchema);

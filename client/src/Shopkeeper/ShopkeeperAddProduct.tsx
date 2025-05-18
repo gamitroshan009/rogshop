@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const ShopkeeperAddProduct = () => {
   const [formData, setFormData] = useState({
-    productImage: null as File | null,
     productName: '',
     price: '',
     quantity: '',
@@ -11,12 +11,12 @@ const ShopkeeperAddProduct = () => {
   });
 
   const [categories, setCategories] = useState<string[]>([]);
-  const [newCategory, setNewCategory] = useState('');
-  const [selectedCategoryToDelete, setSelectedCategoryToDelete] = useState('');
-  const [isOtherCategory, setIsOtherCategory] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
   const [message, setMessage] = useState('');
   const [categoryMessage, setCategoryMessage] = useState('');
-  const [fadeIn, setFadeIn] = useState(false); // State for fade-in animation
+  const [newCategory, setNewCategory] = useState('');
+  const [selectedCategoryToDelete, setSelectedCategoryToDelete] = useState('');
+  const navigate = useNavigate();
 
   const shopName = localStorage.getItem('shopkeeperName') || 'Unknown Shop';
   const shopkeeperId = localStorage.getItem('shopkeeperId');
@@ -28,12 +28,20 @@ const ShopkeeperAddProduct = () => {
           `http://localhost:5000/api/products-categories?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
         );
         setCategories(response.data.categories || []);
+      } catch (error) {}
+    };
+    const fetchProducts = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/products', {
+          params: { shopkeeperId, shopName },
+        });
+        setProducts(response.data || []);
       } catch (error) {
-        console.error('Error fetching categories:', error);
+        setProducts([]);
       }
     };
     fetchCategories();
-    setFadeIn(true); // Trigger fade-in animation when component mounts
+    fetchProducts();
   }, [shopkeeperId, shopName]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,54 +49,41 @@ const ShopkeeperAddProduct = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData({ ...formData, productImage: e.target.files[0] });
-    }
-  };
-
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedCategory = e.target.value;
-    if (selectedCategory === 'Other') {
-      setIsOtherCategory(true);
-      setFormData({ ...formData, category: '' });
-    } else {
-      setIsOtherCategory(false);
-      setFormData({ ...formData, category: selectedCategory });
-    }
+    setFormData({ ...formData, category: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formDataToSend = new FormData();
-    formDataToSend.append('shopkeeperId', shopkeeperId || '');
-    formDataToSend.append('shopName', shopName);
-    formDataToSend.append('productImage', formData.productImage as Blob);
-    formDataToSend.append('productName', formData.productName);
-    formDataToSend.append('price', formData.price);
-    formDataToSend.append('quantity', formData.quantity);
-    formDataToSend.append('category', formData.category);
-
+    const updatedProducts = [
+      ...products,
+      {
+        productName: formData.productName,
+        price: Number(formData.price),
+        quantity: Number(formData.quantity),
+        category: formData.category,
+      },
+    ];
     try {
-      const response = await axios.post('http://localhost:5000/api/products', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      await axios.post('http://localhost:5000/api/products', {
+        shopkeeperId,
+        shopName,
+        products: updatedProducts,
       });
-      setMessage(response.data.message);
-      setFormData({ productImage: null, productName: '', price: '', quantity: '', category: '' });
-      setIsOtherCategory(false);
+      setProducts(updatedProducts);
+      setMessage('Product added successfully');
+      setFormData({ productName: '', price: '', quantity: '', category: '' });
     } catch (error: any) {
       setMessage(error.response?.data?.message || 'An error occurred');
     }
   };
 
+  // Add Category
   const handleAddCategory = async () => {
     if (!newCategory.trim()) {
       setCategoryMessage('Category cannot be empty');
       return;
     }
-
     try {
       const payload = {
         shopkeeperId,
@@ -104,15 +99,14 @@ const ShopkeeperAddProduct = () => {
     }
   };
 
+  // Delete Category
   const handleDeleteCategory = async () => {
     if (!selectedCategoryToDelete) {
       setCategoryMessage('Please select a category to delete');
       return;
     }
-
     const confirmDelete = window.confirm(`Are you sure you want to delete the category "${selectedCategoryToDelete}"?`);
     if (!confirmDelete) return;
-
     try {
       const payload = {
         shopkeeperId,
@@ -129,119 +123,161 @@ const ShopkeeperAddProduct = () => {
   };
 
   return (
-    <div className={`container ${fadeIn ? 'fade-in' : ''}`}>
-      <h2 className="heading">Add Product</h2>
-      <form onSubmit={handleSubmit}>
-        <input type="file" name="productImage" accept="image/*" onChange={handleFileChange} required className="input" />
-        <input type="text" name="productName" placeholder="Product Name" value={formData.productName} onChange={handleInputChange} required className="input" />
-        <input type="number" name="price" placeholder="Price" value={formData.price} onChange={handleInputChange} required className="input" />
-        <input type="number" name="quantity" placeholder="Quantity" value={formData.quantity} onChange={handleInputChange} required className="input" />
+    <div style={{
+      maxWidth: 400,
+      margin: '2rem auto',
+      padding: '2rem',
+      border: '1px solid #ddd',
+      borderRadius: 10,
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    }}>
+      {/* Previous Page Button */}
+      <button
+        onClick={() => navigate(-1)}
+        style={{
+          background: '#f5f5f5',
+          color: '#007bff',
+          border: '1px solid #007bff',
+          borderRadius: '6px',
+          padding: '0.5rem 1.2rem',
+          marginBottom: '1.5rem',
+          cursor: 'pointer',
+          fontWeight: 600,
+          transition: 'background 0.2s, color 0.2s',
+        }}
+        onMouseOver={e => {
+          (e.target as HTMLButtonElement).style.background = '#007bff';
+          (e.target as HTMLButtonElement).style.color = '#fff';
+        }}
+        onMouseOut={e => {
+          (e.target as HTMLButtonElement).style.background = '#f5f5f5';
+          (e.target as HTMLButtonElement).style.color = '#007bff';
+        }}
+      >
+        ← Previous Page
+      </button>
 
-        <select name="category" value={formData.category} onChange={handleCategoryChange} required className="input">
+      <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>Add Product</h2>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          name="productName"
+          placeholder="Product Name"
+          value={formData.productName}
+          onChange={handleInputChange}
+          required
+          style={inputStyle}
+        />
+        <input
+          type="number"
+          name="price"
+          placeholder="Price"
+          value={formData.price}
+          onChange={handleInputChange}
+          required
+          style={inputStyle}
+        />
+        <input
+          type="number"
+          name="quantity"
+          placeholder="Quantity"
+          value={formData.quantity}
+          onChange={handleInputChange}
+          required
+          style={inputStyle}
+        />
+        <select
+          name="category"
+          value={formData.category}
+          onChange={handleCategoryChange}
+          required
+          style={inputStyle}
+        >
           <option value="">Select Category</option>
           {categories.map((category, index) => (
             <option key={index} value={category}>{category}</option>
           ))}
-          <option value="Other">Other</option>
         </select>
-
-        {isOtherCategory && (
-          <input type="text" name="category" placeholder="Enter New Category" value={formData.category} onChange={handleInputChange} required className="input" />
-        )}
-
-        <button type="submit" className="button">Add Product</button>
+        <button type="submit" style={{
+          width: '100%',
+          padding: '0.75rem',
+          color: '#fff',
+          backgroundColor: '#007bff',
+          border: 'none',
+          borderRadius: 6,
+          cursor: 'pointer',
+          marginTop: '0.5rem'
+        }}>Add Product</button>
       </form>
+      {message && <p style={{ textAlign: 'center', marginTop: '1rem', color: message.includes('success') ? 'green' : 'red' }}>{message}</p>}
 
-      <h3 className="sub-heading">Add New Category</h3>
-      <input type="text" placeholder="New Category" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="input" />
-      <button type="button" onClick={handleAddCategory} className="add-category-button">Add Category</button>
+      <h3 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>Add New Category</h3>
+      <input
+        type="text"
+        placeholder="New Category"
+        value={newCategory}
+        onChange={(e) => setNewCategory(e.target.value)}
+        style={inputStyle}
+      />
+      <button
+        type="button"
+        onClick={handleAddCategory}
+        style={{
+          width: '100%',
+          padding: '0.75rem',
+          color: '#fff',
+          backgroundColor: '#28a745',
+          border: 'none',
+          borderRadius: 6,
+          cursor: 'pointer',
+          marginTop: '0.5rem'
+        }}
+      >Add Category</button>
 
-      <h3 className="sub-heading">Delete Category</h3>
-      <select value={selectedCategoryToDelete} onChange={(e) => setSelectedCategoryToDelete(e.target.value)} className="input">
+      <h3 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>Delete Category</h3>
+      <select
+        value={selectedCategoryToDelete}
+        onChange={(e) => setSelectedCategoryToDelete(e.target.value)}
+        style={inputStyle}
+      >
         <option value="">Select Category to Delete</option>
         {categories.map((category, index) => (
           <option key={index} value={category}>{category}</option>
         ))}
       </select>
-      <button type="button" onClick={handleDeleteCategory} className="delete-category-button">Delete Category</button>
+      <button
+        type="button"
+        onClick={handleDeleteCategory}
+        style={{
+          width: '100%',
+          padding: '0.75rem',
+          color: '#fff',
+          backgroundColor: '#dc3545',
+          border: 'none',
+          borderRadius: 6,
+          cursor: 'pointer',
+          marginTop: '0.5rem'
+        }}
+      >Delete Category</button>
 
-      {message && <p className={`message ${message.includes('success') ? 'success' : 'error'}`}>{message}</p>}
-      {categoryMessage && <p className={`message ${categoryMessage.includes('success') ? 'success' : 'error'}`}>{categoryMessage}</p>}
-      
-      <style>{`
-        .container {
-          max-width: 400px;
-          margin: 2rem auto;
-          padding: 2rem;
-          border: 1px solid #ddd;
-          border-radius: 10px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          opacity: 0;
-          animation: fadeIn 0.5s forwards;
-        }
+      {categoryMessage && <p style={{ textAlign: 'center', marginTop: '1rem', color: categoryMessage.includes('success') ? 'green' : 'red' }}>{categoryMessage}</p>}
 
-        .fade-in {
-          animation: fadeIn 0.5s forwards;
-        }
-
-        .heading {
-          text-align: center;
-          margin-bottom: 1rem;
-        }
-        .sub-heading {
-          margin-top: 2rem;
-          margin-bottom: 1rem;
-          font-size: 1.2rem;
-          font-weight: bold;
-        }
-        .input {
-          width: 100%;
-          padding: 0.6rem;
-          margin-bottom: 1rem;
-          border-radius: 6px;
-          border: 1px solid #ccc;
-        }
-        .button,
-        .add-category-button,
-        .delete-category-button {
-          width: 100%;
-          padding: 0.75rem;
-          color: #fff;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          margin-top: 0.5rem;
-        }
-        .button {
-          background-color: #007bff;
-        }
-        .add-category-button {
-          background-color: #28a745;
-        }
-        .delete-category-button {
-          background-color: #dc3545;
-        }
-        .message {
-          text-align: center;
-          margin-top: 1rem;
-        }
-        .success {
-          color: green;
-        }
-        .error {
-          color: red;
-        }
-        @keyframes fadeIn {
-          0% {
-            opacity: 0;
-          }
-          100% {
-            opacity: 1;
-          }
-        }
-      `}</style>
+      <h3 style={{ marginTop: '2rem', marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>Product List</h3>
+      <ul>
+        {products.map((p, idx) => (
+          <li key={idx}>{p.productName} - ₹{p.price} - Qty: {p.quantity} - {p.category}</li>
+        ))}
+      </ul>
     </div>
   );
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '0.6rem',
+  marginBottom: '1rem',
+  borderRadius: 6,
+  border: '1px solid #ccc',
 };
 
 export default ShopkeeperAddProduct;

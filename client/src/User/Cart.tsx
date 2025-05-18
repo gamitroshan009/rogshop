@@ -28,6 +28,9 @@ const Cart = () => {
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [orderMessage, setOrderMessage] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
   const [orderDetails, setOrderDetails] = useState({
     email: '',
     mobileNo: '',
@@ -131,46 +134,67 @@ const Cart = () => {
     }
   };
 
+  const simulateProgress = (): Promise<void> => {
+    return new Promise((resolve) => {
+      setProgress(1);
+      setIsPlacingOrder(true);
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            resolve();
+            return 100;
+          }
+          return prev + 1;
+        });
+      }, 20); // ~2 seconds total
+    });
+  };
+
   const handlePlaceOrder = async () => {
     const confirmOrder = window.confirm('Are you sure you want to place the order and remove all products from the cart?');
-    if (confirmOrder) {
-      if (!orderDetails.email || !orderDetails.mobileNo || !orderDetails.address) {
-        alert('Please fill in all the order details.');
-        return;
+    if (!confirmOrder) return;
+
+    if (!orderDetails.email || !orderDetails.mobileNo || !orderDetails.address) {
+      alert('Please fill in all the order details.');
+      return;
+    }
+
+    const orderProducts = cartItems.map((item) => ({
+      productName: item.product,
+      quantity: item.quantity,
+      price: parseFloat((item.totalBill / item.quantity).toFixed(2)),
+    }));
+
+    const orderData = {
+      shopId: cartItems[0]?.shopId,
+      shopName: cartItems[0]?.shopName,
+      email: orderDetails.email,
+      mobileNo: orderDetails.mobileNo,
+      address: orderDetails.address,
+      products: orderProducts,
+    };
+
+    try {
+      await simulateProgress(); // show progress bar
+
+      await axios.post('http://localhost:5000/api/orders', orderData);
+      alert('Order placed successfully');
+
+      for (const item of cartItems) {
+        await axios.delete(`http://localhost:5000/api/cart/${item._id}`);
       }
 
-      const orderProducts = cartItems.map((item) => ({
-        productName: item.product,
-        quantity: item.quantity,
-        price: parseFloat((item.totalBill / item.quantity).toFixed(2)),
-      }));
-
-      const orderData = {
-        shopId: cartItems[0]?.shopId,
-        shopName: cartItems[0]?.shopName,
-        email: orderDetails.email,
-        mobileNo: orderDetails.mobileNo,
-        address: orderDetails.address,
-        products: orderProducts,
-      };
-
-      try {
-        await axios.post('http://localhost:5000/api/orders', orderData);
-        alert('Order placed successfully');
-
-        // Automatically remove all items from the cart
-        for (const item of cartItems) {
-          await axios.delete(`http://localhost:5000/api/cart/${item._id}`);
-        }
-
-        setCartItems([]);
-        setShowOrderForm(false);
-        setOrderMessage('All products have been removed from the cart.');
-        setTimeout(() => setOrderMessage(''), 3000);
-      } catch (error: any) {
-        console.error('Error placing order:', error);
-        alert(error.response?.data?.message || 'Error placing order');
-      }
+      setCartItems([]);
+      setShowOrderForm(false);
+      setOrderMessage('All products have been removed from the cart.');
+      setTimeout(() => setOrderMessage(''), 3000);
+    } catch (error: any) {
+      console.error('Error placing order:', error);
+      alert(error.response?.data?.message || 'Error placing order');
+    } finally {
+      setIsPlacingOrder(false);
+      setProgress(0);
     }
   };
 
@@ -186,49 +210,60 @@ const Cart = () => {
       </header>
 
       <h2 className="cart-heading">My Cart</h2>
+
+      {/* Full-Screen Loading Overlay */}
+      {isPlacingOrder && (
+        <div className="overlay">
+          <div className="progress-bar-container">
+            <div className="progress-bar" style={{ width: `${progress}%` }}>
+              {progress}%
+            </div>
+          </div>
+        </div>
+      )}
+
       {orderMessage && <p className="order-message">{orderMessage}</p>}
       {mergedCartItems.length > 0 ? (
         <>
-         {mergedCartItems.length > 0 && (
-  <>
-    <div className="shop-header">{mergedCartItems[0].shopName}</div>
-    <div className="shop-divider"></div>
+          <div className="shop-header">{mergedCartItems[0].shopName}</div>
+          <div className="shop-divider"></div>
 
-    {mergedCartItems.map((item) => (
-      <div key={item._id} className="mobile-product-card">
-        <div className="mobile-product-row">
-          <span className="mobile-product-label">Product:</span>
-          <span>{item.product}</span>
-        </div>
-        <div className="mobile-product-row">
-          <span className="mobile-product-label">Price:</span>
-          <span>₹{(item.totalBill / item.quantity).toFixed(2)}</span>
-        </div>
-        <div className="mobile-product-row">
-          <span className="mobile-product-label">Quantity:</span>
-          <select
-            value={item.quantity}
-            onChange={(e) => handleUpdateQuantity(item._id, parseInt(e.target.value, 10))}
-          >
-            {[...Array(item.stock).keys()].map((num) => (
-              <option key={num + 1} value={num + 1}>
-                {num + 1}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mobile-product-row">
-          <span className="mobile-product-label">Total:</span>
-          <span>₹{item.totalBill.toFixed(2)}</span>
-        </div>
-        <div className="mobile-product-row">
-          <button className="remove-button" onClick={() => handleRemoveItem(item._id)}>Remove</button>
-        </div>
-      </div>
-    ))}
-  </>
-)}
-
+          {mergedCartItems.map((item) => (
+            <div key={item._id} className="mobile-product-card">
+              <div className="mobile-product-row">
+                <span className="mobile-product-label">Product:</span>
+                <span>{item.product}</span>
+              </div>
+              <div className="mobile-product-row">
+                <span className="mobile-product-label">Price:</span>
+                <span>₹{(item.totalBill / item.quantity).toFixed(2)}</span>
+              </div>
+              <div className="mobile-product-row">
+                <span className="mobile-product-label">Quantity:</span>
+                <select
+                  value={item.quantity}
+                  onChange={(e) =>
+                    handleUpdateQuantity(item._id, parseInt(e.target.value, 10))
+                  }
+                >
+                  {[...Array(item.stock).keys()].map((num) => (
+                    <option key={num + 1} value={num + 1}>
+                      {num + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mobile-product-row">
+                <span className="mobile-product-label">Total:</span>
+                <span>₹{item.totalBill.toFixed(2)}</span>
+              </div>
+              <div className="mobile-product-row">
+                <button className="remove-button" onClick={() => handleRemoveItem(item._id)}>
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
 
           <div className="cart-summary">
             <p><strong>Total Quantity:</strong> {totalQuantity}</p>
