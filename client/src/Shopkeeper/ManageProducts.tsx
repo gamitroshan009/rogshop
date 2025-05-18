@@ -21,6 +21,7 @@ const ManageProducts = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const shopkeeperId = localStorage.getItem('shopkeeperId');
+  const shopName = localStorage.getItem('shopkeeperName'); // Add this line
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -29,7 +30,7 @@ const ManageProducts = () => {
     const fetchProducts = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/products', {
-          params: { shopkeeperId },
+          params: { shopkeeperId, shopName }, // Send both
         });
         setProducts(
           response.data.map((p: Product) => ({
@@ -59,7 +60,7 @@ const ManageProducts = () => {
     fetchProducts();
     fetchCategories();
     return () => window.removeEventListener('resize', handleResize);
-  }, [shopkeeperId]);
+  }, [shopkeeperId, shopName]); // <-- Added shopName here
 
   const openEditModal = (product: Product) => {
     setSelectedProduct({ ...product });

@@ -1,20 +1,17 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
-// For password hashing
+const bcrypt = require('bcrypt'); // For password hashing
 const jwt = require('jsonwebtoken'); // For generating JWT tokens
 const multer = require('multer'); // For file uploads
 const path = require('path'); // For handling file paths
 const Product = require('./models/Product'); // Import the Product model
 const User = require('./models/User'); // Assuming User model is in 'models/User.js'
 const Shopkeeper = require('./models/Shopkeeper'); // Import the Shopkeeper model
-const ShopkeeperProducts = require('./models/ShopkeeperProducts');
+const ShopkeeperProducts = require('./models/ShopkeeperProducts'); // Import the ShopkeeperProducts model
 const ProductsCategories = require('./models/ProductsCategories'); // Import the ProductsCategories model
 const Cart = require('./models/Cart'); // Import the Cart model
 const Order = require('./models/Order'); // Import the Order model
-const { v4: uuidv4 } = require('uuid'); // Import uuid
-const sharp = require('sharp'); // Import sharp for image processing
 
 // Define Category model
 const Category = mongoose.model('Category', new mongoose.Schema({
@@ -34,59 +31,55 @@ mongoose.connect('mongodb+srv://roshangamit009:92827262@cluster0.vvp3jit.mongodb
   .then(() => console.log('MongoDB connected'))
   .catch((err) => console.error('MongoDB connection error:', err));
 
-// Add or update products array for a shopkeeper (no image)
-app.post('/api/products', async (req, res) => {
-  const { shopkeeperId, shopName, products } = req.body;
-  if (!shopkeeperId || !shopName || !Array.isArray(products)) {
-    return res.status(400).json({ message: 'shopkeeperId, shopName, and products array are required' });
-  }
+// Get products by shopkeeperId, shopName, or productName
+app.get('/api/products', async (req, res) => {
+  const { shopkeeperId, shopName, productName } = req.query;
+
+  const query = {};
+  if (shopkeeperId) query.shopkeeperId = shopkeeperId;
+  if (shopName) query.shopName = shopName;
+  if (productName) query.productName = productName;
+
   try {
-    let shopProducts = await ShopkeeperProducts.findOne({ shopkeeperId, shopName });
-    if (shopProducts) {
-      shopProducts.products = products;
-      await shopProducts.save();
-    } else {
-      shopProducts = new ShopkeeperProducts({ shopkeeperId, shopName, products });
-      await shopProducts.save();
-    }
-    res.status(200).json({ message: 'Products saved successfully', shopProducts });
+    const products = await ShopkeeperProducts.find(query);
+    res.status(200).json(products);
   } catch (error) {
-    res.status(500).json({ message: 'Error saving products', error: error.message });
+    console.error('Error fetching products:', error);
+    res.status(500).json({ message: 'Error fetching products', error: error.message });
   }
 });
 
-// Get products array for a shopkeeper/shop
-app.get('/api/products', async (req, res) => {
-  const { shopkeeperId, shopName } = req.query;
-  if (!shopkeeperId || !shopName) {
-    return res.status(400).json({ message: 'shopkeeperId and shopName are required' });
-  }
+// Update a product by ID
+app.put('/api/products/:id', async (req, res) => {
+  const { id } = req.params;
+  const { productName, price, quantity } = req.body;
+
   try {
-    const shopProducts = await ShopkeeperProducts.findOne({ shopkeeperId, shopName });
-    res.status(200).json(shopProducts ? shopProducts.products : []);
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { productName, price, quantity },
+      { new: true }
+    );
+    res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching products', error: error.message });
+    console.error('Error updating product:', error);
+    res.status(500).json({ message: 'Error updating product', error: error.message });
   }
 });
 
 // Update a product by productName
 app.put('/api/products', async (req, res) => {
-  const { productName, newProductName, price, quantity, category } = req.body;
+  const { productName, newProductName, price, quantity } = req.body;
 
-  if (!productName) {
-    return res.status(400).json({ message: 'Product name is required' });
+  if (!productName || !newProductName || !price || !quantity) {
+    return res.status(400).json({ message: 'All fields are required' });
   }
 
   try {
     const updatedProduct = await ShopkeeperProducts.findOneAndUpdate(
-      { productName }, // Find the product by its current name
-      {
-        productName: newProductName || productName, // Update the product name if a new name is provided
-        price,
-        quantity,
-        category,
-      },
-      { new: true } // Return the updated product
+      { productName }, // Find the product by productName
+      { productName: newProductName, price: Number(price), quantity: Number(quantity) }, // Update fields
+      { new: true } // Return the updated document
     );
 
     if (!updatedProduct) {
@@ -100,18 +93,33 @@ app.put('/api/products', async (req, res) => {
   }
 });
 
-// Delete a product by ID
-app.delete('/api/products/:id', async (req, res) => {
-  const { id } = req.params;
+// Update a product by shopName and productName in ShopkeeperProducts table
+app.put('/api/products', async (req, res) => {
+  const { shopName, productName, newProductName, price, quantity } = req.body;
+
+  if (!shopName || !productName || !newProductName || !price || !quantity) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
 
   try {
-    await Product.findByIdAndDelete(id);
-    res.status(200).json({ message: 'Product deleted successfully' });
+    const updatedProduct = await ShopkeeperProducts.findOneAndUpdate(
+      { shopName, productName }, // Find the product by shopName and productName
+      { productName: newProductName, price: Number(price), quantity: Number(quantity) }, // Update fields
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
   } catch (error) {
-    console.error('Error deleting product:', error);
-    res.status(500).json({ message: 'Error deleting product', error: error.message });
+    console.error('Error updating product:', error);
+    res.status(500).json({ message: 'Error updating product', error: error.message });
   }
 });
+
+
 
 // Delete a product by productName
 app.delete('/api/products', async (req, res) => {
@@ -232,15 +240,10 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-      userId: uuidv4(), // Generate a unique userId
-      username,
-      email,
-      password: hashedPassword,
-    });
-
+    const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
-    res.status(201).json({ message: 'User registered successfully', userId: newUser.userId });
+
+    res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
     console.error('Error registering user:', error);
     res.status(500).json({ message: 'Error registering user', error: error.message });
@@ -494,7 +497,6 @@ app.post('/api/orders', async (req, res) => {
     res.status(500).json({ message: 'Error creating order', error: error.message });
   }
 });
-
 // Get orders for a specific user by email
 app.get('/api/orders', async (req, res) => {
   const { email } = req.query;
@@ -512,17 +514,6 @@ app.get('/api/orders', async (req, res) => {
   }
 });
 
-// Get all orders (Admin Dashboard)
-app.get('/api/admin/orders', async (req, res) => {
-  try {
-    const orders = await Order.find(); // Fetch all orders
-    res.status(200).json(orders);
-  } catch (error) {
-    console.error('Error fetching all orders:', error);
-    res.status(500).json({ message: 'Error fetching all orders', error: error.message });
-  }
-});
-
 // Get orders for a specific shop by shopName and shopId
 app.get('/api/orders/shop', async (req, res) => {
   const { shopName, shopId } = req.query;
@@ -537,6 +528,17 @@ app.get('/api/orders/shop', async (req, res) => {
   } catch (error) {
     console.error('Error fetching orders:', error);
     res.status(500).json({ message: 'Error fetching orders', error: error.message });
+  }
+});
+
+// Get all orders (Admin Dashboard)
+app.get('/api/admin/orders', async (req, res) => {
+  try {
+    const orders = await Order.find(); // Fetch all orders
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching all orders:', error);
+    res.status(500).json({ message: 'Error fetching all orders', error: error.message });
   }
 });
 
@@ -578,23 +580,60 @@ app.put('/api/orders/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/delete-category', async (req, res) => {
-  const { shopkeeperId, shopName, category } = req.body;
+// Add a new product
+app.post('/api/products', async (req, res) => {
+  const { shopkeeperId, shopName, productName, price, quantity, category } = req.body;
 
-  if (!shopkeeperId || !shopName || !category) {
+  // Validate required fields
+  if (!shopkeeperId || !shopName || !productName || !price || !quantity || !category) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
   try {
-    const shopCategories = await ProductsCategories.findOneAndUpdate(
-      { shopkeeperId, shopName },
-      { $pull: { categories: category } },
-      { new: true }
-    );
-    res.status(200).json({ message: 'Category deleted successfully', shopCategories });
+    // Create a new product document
+    const newProduct = new ShopkeeperProducts({
+      shopkeeperId,
+      shopName,
+      productName,
+      price,
+      quantity,
+      category,
+    });
+
+    // Save the product to the database
+    await newProduct.save();
+
+    // Respond with success
+    res.status(201).json({ message: 'Product added successfully', product: newProduct });
+  } catch (error) {
+    console.error('Error adding product:', error);
+    res.status(500).json({ message: 'Error adding product', error: error.message });
+  }
+});
+
+// Delete a category for a shop
+app.delete('/api/products-categories', async (req, res) => {
+  const { shopkeeperId, shopName, category } = req.body;
+
+  if (!shopkeeperId || !shopName || !category) {
+    return res.status(400).json({ message: 'Shopkeeper ID, Shop Name, and Category are required' });
+  }
+
+  try {
+    const shopCategories = await ProductsCategories.findOne({ shopkeeperId, shopName });
+
+    if (!shopCategories) {
+      return res.status(404).json({ message: 'Shop or categories not found' });
+    }
+
+    // Remove the category from the list
+    shopCategories.categories = shopCategories.categories.filter((cat) => cat !== category);
+    await shopCategories.save();
+
+    res.status(200).json({ message: 'Category deleted successfully', categories: shopCategories.categories });
   } catch (error) {
     console.error('Error deleting category:', error);
-    res.status(500).json({ message: 'Error deleting category' });
+    res.status(500).json({ message: 'Error deleting category', error: error.message });
   }
 });
 

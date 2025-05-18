@@ -28,8 +28,15 @@ const ShopkeeperAddProduct = () => {
           `http://localhost:5000/api/products-categories?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
         );
         setCategories(response.data.categories || []);
-      } catch (error) {}
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
     };
+
+    fetchCategories();
+  }, [shopkeeperId, shopName]);
+
+  useEffect(() => {
     const fetchProducts = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/products', {
@@ -40,7 +47,6 @@ const ShopkeeperAddProduct = () => {
         setProducts([]);
       }
     };
-    fetchCategories();
     fetchProducts();
   }, [shopkeeperId, shopName]);
 
@@ -55,22 +61,20 @@ const ShopkeeperAddProduct = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedProducts = [
-      ...products,
-      {
+
+    try {
+      // Send product data to the backend
+      const response = await axios.post('http://localhost:5000/api/products', {
+        shopkeeperId,
+        shopName,
         productName: formData.productName,
         price: Number(formData.price),
         quantity: Number(formData.quantity),
         category: formData.category,
-      },
-    ];
-    try {
-      await axios.post('http://localhost:5000/api/products', {
-        shopkeeperId,
-        shopName,
-        products: updatedProducts,
       });
-      setProducts(updatedProducts);
+
+      // Update the product list with the newly added product
+      setProducts([...products, response.data.product]);
       setMessage('Product added successfully');
       setFormData({ productName: '', price: '', quantity: '', category: '' });
     } catch (error: any) {
@@ -105,16 +109,21 @@ const ShopkeeperAddProduct = () => {
       setCategoryMessage('Please select a category to delete');
       return;
     }
+
     const confirmDelete = window.confirm(`Are you sure you want to delete the category "${selectedCategoryToDelete}"?`);
     if (!confirmDelete) return;
+
     try {
       const payload = {
         shopkeeperId,
         shopName,
         category: selectedCategoryToDelete,
       };
-      await axios.delete('http://localhost:5000/api/delete-category', { data: payload });
-      setCategories(categories.filter((category) => category !== selectedCategoryToDelete));
+
+      const response = await axios.delete('http://localhost:5000/api/products-categories', { data: payload });
+
+      // Update the categories list after deletion
+      setCategories(response.data.categories);
       setCategoryMessage('Category deleted successfully');
       setSelectedCategoryToDelete('');
     } catch (error: any) {
