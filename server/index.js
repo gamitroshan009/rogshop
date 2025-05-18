@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcrypt'); // For password hashing
+const bcrypt = require('bcryptjs'); // For password hashing
 const jwt = require('jsonwebtoken'); // For generating JWT tokens
 const multer = require('multer'); // For file uploads
 const path = require('path'); // For handling file paths
