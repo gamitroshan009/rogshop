@@ -1,5 +1,9 @@
+
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import html2pdf from 'html2pdf.js';
+import ReactDOMServer from 'react-dom/server';
+import OrderPDF from '../components/OrderPDF';
 
 interface Product {
   productName: string;
@@ -19,200 +23,326 @@ interface Order {
 const MyOrder = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [expandedOrders, setExpandedOrders] = useState<string[]>([]);
+
   const userEmail = localStorage.getItem('userEmail');
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get<Order[]>('http://localhost:5000/api/orders', {
-          params: { email: userEmail },
-        });
+        const response = await axios.get<Order[]>(
+          'https://rogshop02.onrender.com/api/orders',
+          {
+            params: { email: userEmail },
+          }
+        );
+
         setOrders(response.data);
       } catch (error) {
         console.error('Error fetching orders:', error);
       }
     };
 
-    fetchOrders();
+    if (userEmail) {
+      fetchOrders();
+    }
   }, [userEmail]);
 
+  // Expand / Collapse Order
   const toggleExpand = (orderId: string) => {
     setExpandedOrders((prev) =>
-      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId]
     );
   };
 
-  const groupByCategory = (products: Product[]) => {
-    return products.reduce((grouped, product) => {
-      const category = product.category || 'Uncategorized';
-      if (!grouped[category]) grouped[category] = [];
-      grouped[category].push(product);
-      return grouped;
-    }, {} as Record<string, Product[]>);
+  // Generate PDF
+  const generatePDF = (orderId: string) => {
+    const order = orders.find((o) => o._id === orderId);
+
+    if (!order) return;
+
+    const elementHTML = ReactDOMServer.renderToString(
+      <OrderPDF order={order} />
+    );
+
+    const container = document.createElement('div');
+    container.innerHTML = elementHTML;
+
+    document.body.appendChild(container);
+
+    const opt = {
+      margin: 0.5,
+      filename: `Order_${orderId}.pdf`,
+      html2canvas: {
+        scale: 2,
+      },
+      jsPDF: {
+        unit: 'in',
+        format: 'letter',
+        orientation: 'portrait',
+      },
+    };
+
+    html2pdf()
+      .set(opt)
+      .from(container)
+      .save()
+      .then(() => {
+        document.body.removeChild(container);
+      })
+      .catch((error: unknown) => {
+        console.error('PDF generation error:', error);
+        document.body.removeChild(container);
+      });
   };
 
   return (
-    <div className="order-container">
-      <style>{`
-        .order-container {
-          max-width: 90%;
-          margin: 2rem auto;
-          padding: 1.5rem;
-        }
-
-        .order-title {
-          text-align: center;
-          font-size: 1.8rem;
-          margin-bottom: 1.5rem;
-          color: #333;
-        }
-
-        .order-card {
-          border: 1px solid #ddd;
-          border-radius: 10px;
-          padding: 0.8rem;
-          margin-bottom: 1rem;
-          background: #fff;
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-          transition: all 0.3s ease;
-          cursor: pointer;
-        }
-
-        .order-summary-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 1rem;
-          font-weight: bold;
-          padding: 0.2rem 0.5rem;
-          color: #007bff;
-        }
-
-        .order-summary-left {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .shop-name {
-          font-size: 1.1rem;
-        }
-
-        .order-date {
-          font-size: 0.85rem;
-          color: #666;
-        }
-
-        .total-amount {
-          text-align: right;
-        }
-
-        .toggle-icon {
-          margin-left: 12px;
-          font-size: 1.3rem;
-          color: #555;
-        }
-
-        .order-details-wrapper {
-          overflow: hidden;
-          transition: max-height 0.6s ease;
-        }
-
-        .order-details {
-          padding: 0.5rem 0.5rem 0;
-        }
-
-        .order-field {
-          font-size: 0.9rem;
-          margin-bottom: 0.4rem;
-        }
-
-        .order-field span {
-          font-weight: bold;
-        }
-
-        .nested-table {
-          width: 100%;
-          font-size: 0.9rem;
-          margin-top: 0.5rem;
-          border-collapse: collapse;
-        }
-
-        .nested-table th,
-        .nested-table td {
-          padding: 0.4rem;
-          border-bottom: 1px solid #eee;
-          text-align: left;
-        }
-
-        .no-orders {
-          text-align: center;
-          font-size: 1rem;
-          color: #888;
-          padding: 1rem;
-        }
-      `}</style>
-
-      <h2 className="order-title">My Orders</h2>
+    <div
+      style={{
+        maxWidth: '90%',
+        margin: '2rem auto',
+        padding: '1.5rem',
+      }}
+    >
+      <h2 style={{ textAlign: 'center' }}>
+        My Orders
+      </h2>
 
       {orders.length > 0 ? (
         orders.map((order) => {
-          const totalPrice = order.products.reduce((sum, p) => sum + p.quantity * p.price, 0).toFixed(2);
-          const totalQty = order.products.reduce((sum, p) => sum + p.quantity, 0);
-          const isExpanded = expandedOrders.includes(order._id);
-          const groupedProducts = groupByCategory(order.products);
+
+          // Total Amount
+          const total = order.products
+            .reduce(
+              (sum, p) => sum + p.quantity * p.price,
+              0
+            )
+            .toFixed(2);
+
+          // Total Quantity
+          const totalQty = order.products.reduce(
+            (sum, p) => sum + p.quantity,
+            0
+          );
+
+          // Group Products Category Wise
+          const groupedProducts = order.products.reduce<
+            Record<string, Product[]>
+          >((groups, product) => {
+            const category =
+              product.category?.trim() || 'Other';
+
+            if (!groups[category]) {
+              groups[category] = [];
+            }
+
+            groups[category].push(product);
+
+            return groups;
+          }, {});
+
+          // Sort Categories
+          const sortedCategories = Object.keys(
+            groupedProducts
+          ).sort((a, b) => a.localeCompare(b));
+
+          const isExpanded = expandedOrders.includes(
+            order._id
+          );
 
           return (
-            <div key={order._id} className="order-card" onClick={() => toggleExpand(order._id)}>
-              <div className="order-summary-row">
-                <div className="order-summary-left">
-                  <div className="shop-name">{order.shopName}</div>
-                  <div className="order-date">{new Date(order.createdAt).toLocaleString()}</div>
+            <div
+              key={order._id}
+              style={{
+                border: '1px solid #ccc',
+                borderRadius: '10px',
+                padding: '1rem',
+                marginBottom: '1rem',
+                background: '#fdfdfd',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+              }}
+            >
+              {/* Order Header */}
+              <div
+                onClick={() => toggleExpand(order._id)}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <strong>{order.shopName}</strong>
+                  <br />
+
+                  <span
+                    style={{
+                      fontSize: '0.9rem',
+                      color: '#666',
+                    }}
+                  >
+                    {new Date(
+                      order.createdAt
+                    ).toLocaleString()}
+                  </span>
                 </div>
-                <div className="total-amount">₹{totalPrice}</div>
-                <div className="toggle-icon">{isExpanded ? '▲' : '▼'}</div>
+
+                <div
+                  style={{
+                    textAlign: 'right',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  ₹{total}
+                  <br />
+
+                  <span>
+                    {isExpanded ? '▲' : '▼'}
+                  </span>
+                </div>
               </div>
 
-              <div className="order-details-wrapper" style={{ maxHeight: isExpanded ? '1000px' : '0' }}>
-                <div className="order-details">
-                  <div className="order-field"><span>Order ID:</span> {order._id}</div>
-                  <div className="order-field"><span>Total Qty:</span> {totalQty}</div>
-                  <div className="order-field"><span>Address:</span> {order.address}</div>
-                     <tr className='nested-table'>
-                            <th>Product</th>
-                            <th>Qty</th>
-                            <th>Price(₹)</th>
-                            <th>Total(₹)</th>
-                        </tr>
-                  {Object.entries(groupedProducts).map(([category, items]) => (
-                    <div key={category}>
-                       
-                      <table className="nested-table">
-                        <thead>
-                        
-                        </thead>
-                        <tbody>
-                          {items.map((p, i) => (
-                            <tr key={i}>
-                              <td>{p.productName}</td>
-                              <td>{p.quantity}</td>
-                              <td>{p.price}</td>
-                              <td>{(p.quantity * p.price).toFixed(2)}</td>
+              {/* Expanded Order Details */}
+              {isExpanded && (
+                <div style={{ marginTop: '1rem' }}>
+
+                  <p>
+                    <strong>Order ID:</strong>{' '}
+                    {order._id}
+                  </p>
+
+                  <p>
+                    <strong>Total Qty:</strong>{' '}
+                    {totalQty}
+                  </p>
+
+                  <p>
+                    <strong>Address:</strong>{' '}
+                    {order.address}
+                  </p>
+
+                  {/* Category Wise Products Table */}
+                  <table
+                    style={{
+                      width: '100%',
+                      marginTop: '10px',
+                      fontSize: '0.9rem',
+                      borderCollapse: 'collapse',
+                    }}
+                  >
+                    <thead>
+                      <tr
+                        style={{
+                          background: '#343a40',
+                          color: '#fff',
+                        }}
+                      >
+                        <th style={thStyle}>Product</th>
+                        <th style={thStyle}>Qty</th>
+                        <th style={thStyle}>Price</th>
+                        <th style={thStyle}>Total</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {sortedCategories.map(
+                        (category) => (
+                          <>
+                            {/* Category Heading */}
+                            <tr key={category}>
+                              <td
+                                colSpan={4}
+                                style={{
+                                  background: '#e9ecef',
+                                  fontWeight: 'bold',
+                                  padding: '10px',
+                                  border: '1px solid #ddd',
+                                }}
+                              >
+                                {category}
+                              </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
+
+                            {/* Category Products */}
+                            {groupedProducts[
+                              category
+                            ].map((p, idx) => (
+                              <tr
+                                key={`${category}-${idx}`}
+                              >
+                                <td style={tdStyle}>
+                                  {p.productName}
+                                </td>
+
+                                <td style={tdStyle}>
+                                  {p.quantity}
+                                </td>
+
+                                <td style={tdStyle}>
+                                  ₹{p.price}
+                                </td>
+
+                                <td style={tdStyle}>
+                                  ₹
+                                  {(
+                                    p.quantity * p.price
+                                  ).toFixed(2)}
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        )
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
+              )}
+
+              {/* Generate PDF Button */}
+              <button
+                style={{
+                  marginTop: '1rem',
+                  background: '#007bff',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+                onClick={() => generatePDF(order._id)}
+              >
+                Generate PDF
+              </button>
             </div>
           );
         })
       ) : (
-        <p className="no-orders">You have no orders yet.</p>
+        <p
+          style={{
+            textAlign: 'center',
+            color: '#777',
+          }}
+        >
+          You have no orders yet.
+        </p>
       )}
     </div>
   );
+};
+
+// Table Styles
+const thStyle: React.CSSProperties = {
+  padding: '10px',
+  border: '1px solid #ddd',
+  textAlign: 'left',
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: '10px',
+  border: '1px solid #ddd',
+  textAlign: 'left',
 };
 
 export default MyOrder;

@@ -29,7 +29,7 @@ const ManageProducts = () => {
 
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/products', {
+        const response = await axios.get('https://rogshop02.onrender.com/api/products', {
           params: { shopkeeperId, shopName }, // Send both
         });
         setProducts(
@@ -48,7 +48,7 @@ const ManageProducts = () => {
 
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/products-categories', {
+        const response = await axios.get('https://rogshop02.onrender.com/api/products-categories', {
           params: { shopkeeperId },
         });
         setCategories(response.data.categories || []);
@@ -83,7 +83,7 @@ const ManageProducts = () => {
     if (!selectedProduct) return;
 
     try {
-      await axios.put('http://localhost:5000/api/products', {
+      await axios.put('https://rogshop02.onrender.com/api/products', {
         productName: selectedProduct.productName,
         newProductName: selectedProduct.newProductName,
         price: selectedProduct.price,
@@ -120,7 +120,7 @@ const ManageProducts = () => {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete('http://localhost:5000/api/products', {
+      await axios.delete('https://rogshop02.onrender.com/api/products', {
         data: { productName },
       });
       setProducts(products.filter((p) => p.productName !== productName));

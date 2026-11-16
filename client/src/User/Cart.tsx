@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -7,6 +8,7 @@ interface Product {
   productName: string;
   shopkeeperId: string;
   quantity: number;
+  price: number;
 }
 
 interface CartItem {
@@ -16,11 +18,14 @@ interface CartItem {
   shopId: string;
   quantity: number;
   totalBill: number;
+  category?: string;
 }
 
 interface MergedCartItem extends CartItem {
   stock: number;
 }
+
+const API = 'https://rogshop02.onrender.com/api';
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -30,6 +35,7 @@ const Cart = () => {
   const [orderMessage, setOrderMessage] = useState('');
   const [progress, setProgress] = useState(0);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [updatingItem, setUpdatingItem] = useState<string | null>(null);
 
   const [orderDetails, setOrderDetails] = useState({
     email: '',
@@ -40,104 +46,145 @@ const Cart = () => {
   const userEmail = localStorage.getItem('userEmail') || '';
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchCartItems = async () => {
-      try {
-        const response = await axios.get<CartItem[]>(`http://localhost:5000/api/cart`, {
-          params: { userEmail },
-        });
-        setCartItems(response.data);
-      } catch (error) {
-        console.error('Error fetching cart items:', error);
-      }
-    };
-    fetchCartItems();
-  }, [userEmail]);
+  // Fetch cart items
+  const fetchCartItems = async () => {
+    try {
+      const response = await axios.get<CartItem[]>(`${API}/cart`, {
+        params: { userEmail },
+      });
+
+      setCartItems(response.data);
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+    }
+  };
+
+  // Fetch products
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get<Product[]>(`${API}/products`);
+      setProducts(response.data);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get<Product[]>(`http://localhost:5000/api/products`);
-        setProducts(response.data);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      } finally {
-        setLoading(false);
-      }
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchCartItems(), fetchProducts()]);
+      setLoading(false);
     };
-    fetchProducts();
-  }, []);
+
+    loadData();
+  }, [userEmail]);
 
   useEffect(() => {
     if (userEmail) {
-      setOrderDetails((prev) => ({ ...prev, email: userEmail }));
+      setOrderDetails((prev) => ({
+        ...prev,
+        email: userEmail,
+      }));
     }
   }, [userEmail]);
 
+  // Merge cart with product stock
   const mergedCartItems: MergedCartItem[] = cartItems.map((cartItem) => {
     const productDetails = products.find(
       (product) =>
         product.productName === cartItem.product &&
         product.shopkeeperId === cartItem.shopId
     );
+
     return {
       ...cartItem,
       stock: productDetails?.quantity ?? 0,
     };
   });
 
-  const totalQuantity = cartItems.reduce((total, item) => total + item.quantity, 0);
-  const totalAmount = cartItems.reduce((total, item) => total + item.totalBill, 0);
+  const totalQuantity = cartItems.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
 
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+  const totalAmount = cartItems.reduce(
+    (total, item) => total + item.totalBill,
+    0
+  );
+
+  // UPDATE CART QUANTITY
+  const handleUpdateQuantity = async (
+    itemId: string,
+    newQuantity: number
+  ) => {
     if (newQuantity < 1) return;
 
+    const updatedItem = mergedCartItems.find(
+      (item) => item._id === itemId
+    );
+
+    if (!updatedItem) return;
+
+    if (newQuantity > updatedItem.stock) {
+      alert(`Only ${updatedItem.stock} items available in stock`);
+      return;
+    }
+
     try {
-      const updatedItem = mergedCartItems.find((item) => item._id === itemId);
-      if (!updatedItem) return;
+      setUpdatingItem(itemId);
 
-      if (newQuantity > updatedItem.stock) {
-        alert('Quantity exceeds available stock');
-        return;
-      }
-
-      const updatedTotalBill = parseFloat(
-        ((updatedItem.totalBill / updatedItem.quantity) * newQuantity).toFixed(2)
+      const response = await axios.put(
+        `${API}/cart/${itemId}`,
+        { quantity: newQuantity }
       );
 
-      await axios.put(`http://localhost:5000/api/cart/${itemId}`, {
-        quantity: newQuantity,
-        totalBill: updatedTotalBill,
-      });
+      const updatedCartItem = response.data.cartItem;
 
       setCartItems((prev) =>
         prev.map((item) =>
-          item._id === itemId
-            ? { ...item, quantity: newQuantity, totalBill: updatedTotalBill }
-            : item
+          item._id === itemId ? updatedCartItem : item
         )
       );
-    } catch (error) {
-      console.error('Error updating quantity:', error);
+
+    } catch (error: any) {
+      console.error('Quantity update error:', error);
+
+      alert(
+        error.response?.data?.message ||
+        'Unable to update quantity'
+      );
+    } finally {
+      setUpdatingItem(null);
     }
   };
 
+  // REMOVE CART ITEM
   const handleRemoveItem = async (itemId: string) => {
-    const confirmRemove = window.confirm('Are you sure you want to remove this product from the cart?');
-    if (confirmRemove) {
-      try {
-        await axios.delete(`http://localhost:5000/api/cart/${itemId}`);
-        setCartItems((prev) => prev.filter((item) => item._id !== itemId));
-      } catch (error) {
-        console.error('Error removing item:', error);
-      }
+    const confirmRemove = window.confirm(
+      'Are you sure you want to remove this product from cart?'
+    );
+
+    if (!confirmRemove) return;
+
+    try {
+      await axios.delete(`${API}/cart/${itemId}`);
+
+      setCartItems((prev) =>
+        prev.filter((item) => item._id !== itemId)
+      );
+
+    } catch (error) {
+      console.error('Error removing item:', error);
+      alert('Unable to remove product');
     }
   };
 
+  // PROGRESS BAR
   const simulateProgress = (): Promise<void> => {
     return new Promise((resolve) => {
       setProgress(1);
       setIsPlacingOrder(true);
+
       const interval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 100) {
@@ -145,30 +192,60 @@ const Cart = () => {
             resolve();
             return 100;
           }
+
           return prev + 1;
         });
-      }, 20); // ~2 seconds total
+      }, 20);
     });
   };
 
+  // PLACE ORDER
   const handlePlaceOrder = async () => {
-    const confirmOrder = window.confirm('Are you sure you want to place the order and remove all products from the cart?');
-    if (!confirmOrder) return;
-
-    if (!orderDetails.email || !orderDetails.mobileNo || !orderDetails.address) {
-      alert('Please fill in all the order details.');
+    if (!cartItems.length) {
+      alert('Your cart is empty');
       return;
     }
+
+    if (
+      !orderDetails.email ||
+      !orderDetails.mobileNo ||
+      !orderDetails.address
+    ) {
+      alert('Please fill in all order details');
+      return;
+    }
+
+    // Current order API supports one shop per order.
+    const shopId = cartItems[0].shopId;
+
+    const sameShop = cartItems.every(
+      (item) => item.shopId === shopId
+    );
+
+    if (!sameShop) {
+      alert(
+        'Please place orders for different shops separately.'
+      );
+      return;
+    }
+
+    const confirmOrder = window.confirm(
+      'Are you sure you want to place this order?'
+    );
+
+    if (!confirmOrder) return;
 
     const orderProducts = cartItems.map((item) => ({
       productName: item.product,
       quantity: item.quantity,
-      price: parseFloat((item.totalBill / item.quantity).toFixed(2)),
+      price: Number(
+        (item.totalBill / item.quantity).toFixed(2)
+      ),
     }));
 
     const orderData = {
-      shopId: cartItems[0]?.shopId,
-      shopName: cartItems[0]?.shopName,
+      shopId: cartItems[0].shopId,
+      shopName: cartItems[0].shopName,
       email: orderDetails.email,
       mobileNo: orderDetails.mobileNo,
       address: orderDetails.address,
@@ -176,22 +253,29 @@ const Cart = () => {
     };
 
     try {
-      await simulateProgress(); // show progress bar
+      await simulateProgress();
 
-      await axios.post('http://localhost:5000/api/orders', orderData);
+      await axios.post(`${API}/orders`, orderData);
+
       alert('Order placed successfully');
-
-      for (const item of cartItems) {
-        await axios.delete(`http://localhost:5000/api/cart/${item._id}`);
-      }
 
       setCartItems([]);
       setShowOrderForm(false);
-      setOrderMessage('All products have been removed from the cart.');
-      setTimeout(() => setOrderMessage(''), 3000);
+
+      setOrderMessage('Order placed successfully!');
+
+      setTimeout(() => {
+        setOrderMessage('');
+      }, 3000);
+
     } catch (error: any) {
       console.error('Error placing order:', error);
-      alert(error.response?.data?.message || 'Error placing order');
+
+      alert(
+        error.response?.data?.message ||
+        'Error placing order'
+      );
+
     } finally {
       setIsPlacingOrder(false);
       setProgress(0);
@@ -199,66 +283,145 @@ const Cart = () => {
   };
 
   if (loading) {
-    return <p className="empty-message">Loading your cart...</p>;
+    return (
+      <p className="empty-message">
+        Loading your cart...
+      </p>
+    );
   }
 
   return (
     <div className="cart-container">
+
       <header className="bg-primary text-white p-3 d-flex justify-content-between align-items-center">
-        <button className="btn btn-light" onClick={() => navigate(-1)}>Back</button>
+        <button
+          className="btn btn-light"
+          onClick={() => navigate(-1)}
+        >
+          Back
+        </button>
+
         <span className="fw-bold">{userEmail}</span>
       </header>
 
       <h2 className="cart-heading">My Cart</h2>
 
-      {/* Full-Screen Loading Overlay */}
       {isPlacingOrder && (
         <div className="overlay">
           <div className="progress-bar-container">
-            <div className="progress-bar" style={{ width: `${progress}%` }}>
+            <div
+              className="progress-bar"
+              style={{ width: `${progress}%` }}
+            >
               {progress}%
             </div>
           </div>
         </div>
       )}
 
-      {orderMessage && <p className="order-message">{orderMessage}</p>}
+      {orderMessage && (
+        <p className="order-message">{orderMessage}</p>
+      )}
+
       {mergedCartItems.length > 0 ? (
         <>
-          <div className="shop-header">{mergedCartItems[0].shopName}</div>
+          <div className="shop-header">
+            {mergedCartItems[0].shopName}
+          </div>
+
           <div className="shop-divider"></div>
 
           {mergedCartItems.map((item) => (
-            <div key={item._id} className="mobile-product-card">
+            <div
+              key={item._id}
+              className="mobile-product-card"
+            >
               <div className="mobile-product-row">
-                <span className="mobile-product-label">Product:</span>
+                <span className="mobile-product-label">
+                  Product:
+                </span>
+
                 <span>{item.product}</span>
               </div>
+
               <div className="mobile-product-row">
-                <span className="mobile-product-label">Price:</span>
-                <span>₹{(item.totalBill / item.quantity).toFixed(2)}</span>
+  <span className="mobile-product-label">
+    Category:
+  </span>
+  <span>{item.category || 'No Category'}</span>
+</div>
+
+              <div className="mobile-product-row">
+                <span className="mobile-product-label">
+                  Price:
+                </span>
+
+                <span>
+                  ₹
+                  {(
+                    item.totalBill / item.quantity
+                  ).toFixed(2)}
+                </span>
               </div>
+
               <div className="mobile-product-row">
-                <span className="mobile-product-label">Quantity:</span>
+                <span className="mobile-product-label">
+                  Quantity:
+                </span>
+
                 <select
                   value={item.quantity}
+                  disabled={
+                    updatingItem === item._id ||
+                    item.stock < 1
+                  }
                   onChange={(e) =>
-                    handleUpdateQuantity(item._id, parseInt(e.target.value, 10))
+                    handleUpdateQuantity(
+                      item._id,
+                      Number(e.target.value)
+                    )
                   }
                 >
-                  {[...Array(item.stock).keys()].map((num) => (
-                    <option key={num + 1} value={num + 1}>
-                      {num + 1}
+                  {Array.from(
+                    { length: item.stock },
+                    (_, index) => index + 1
+                  ).map((num) => (
+                    <option key={num} value={num}>
+                      {num}
                     </option>
                   ))}
                 </select>
+
+                {updatingItem === item._id && (
+                  <span> Updating...</span>
+                )}
               </div>
+
               <div className="mobile-product-row">
-                <span className="mobile-product-label">Total:</span>
-                <span>₹{item.totalBill.toFixed(2)}</span>
+                <span className="mobile-product-label">
+                  Available Stock:
+                </span>
+
+                <span>{item.stock}</span>
               </div>
+
               <div className="mobile-product-row">
-                <button className="remove-button" onClick={() => handleRemoveItem(item._id)}>
+                <span className="mobile-product-label">
+                  Total:
+                </span>
+
+                <span>
+                  ₹{item.totalBill.toFixed(2)}
+                </span>
+              </div>
+
+              <div className="mobile-product-row">
+                <button
+                  className="remove-button"
+                  onClick={() =>
+                    handleRemoveItem(item._id)
+                  }
+                >
                   Remove
                 </button>
               </div>
@@ -266,49 +429,80 @@ const Cart = () => {
           ))}
 
           <div className="cart-summary">
-            <p><strong>Total Quantity:</strong> {totalQuantity}</p>
-            <p><strong>Total Amount:</strong> ₹{totalAmount.toFixed(2)}</p>
+            <p>
+              <strong>Total Quantity:</strong>{' '}
+              {totalQuantity}
+            </p>
+
+            <p>
+              <strong>Total Amount:</strong>{' '}
+              ₹{totalAmount.toFixed(2)}
+            </p>
           </div>
 
-          <button className="order-button" onClick={() => setShowOrderForm(true)}>
+          <button
+            className="order-button"
+            disabled={isPlacingOrder || !!updatingItem}
+            onClick={() => setShowOrderForm(true)}
+          >
             Place Order
           </button>
         </>
       ) : (
-        <p className="empty-message">Your cart is empty.</p>
+        <p className="empty-message">
+          Your cart is empty.
+        </p>
       )}
 
       {showOrderForm && (
         <div className="order-form">
           <h3>Order Details</h3>
+
           <input
             type="email"
             placeholder="Email"
             value={orderDetails.email}
             onChange={(e) =>
-              setOrderDetails({ ...orderDetails, email: e.target.value })
+              setOrderDetails({
+                ...orderDetails,
+                email: e.target.value,
+              })
             }
           />
+
           <input
             type="text"
             placeholder="Mobile No"
             value={orderDetails.mobileNo}
             onChange={(e) =>
-              setOrderDetails({ ...orderDetails, mobileNo: e.target.value })
+              setOrderDetails({
+                ...orderDetails,
+                mobileNo: e.target.value,
+              })
             }
           />
+
           <textarea
             placeholder="Address"
             value={orderDetails.address}
             onChange={(e) =>
-              setOrderDetails({ ...orderDetails, address: e.target.value })
+              setOrderDetails({
+                ...orderDetails,
+                address: e.target.value,
+              })
             }
           />
-          <button className="submit-button" onClick={handlePlaceOrder}>
+
+          <button
+            className="submit-button"
+            disabled={isPlacingOrder || !!updatingItem}
+            onClick={handlePlaceOrder}
+          >
             Submit Order
           </button>
         </div>
       )}
+
     </div>
   );
 };

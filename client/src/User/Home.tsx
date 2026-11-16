@@ -21,7 +21,7 @@ const Home = () => {
   useEffect(() => {
     const fetchShopkeepers = async () => {
       try {
-        const response = await axios.get<Shopkeeper[]>('http://localhost:5000/api/shopkeepers');
+        const response = await axios.get<Shopkeeper[]>('https://rogshop02.onrender.com/api/shopkeepers');
         setShopkeepers(response.data);
       } catch (error) {
         console.error('Error fetching shopkeepers:', error);

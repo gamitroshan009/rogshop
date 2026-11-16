@@ -23,7 +23,7 @@ const ShopkeeperLogin = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/shopkeeper-login', formData);
+      const response = await axios.post('https://rogshop02.onrender.com/api/auth/shopkeeper-login', formData);
 
       if (response.data.success) {
         localStorage.setItem('shopkeeperId', response.data.shopkeeperId);

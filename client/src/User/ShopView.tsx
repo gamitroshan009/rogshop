@@ -36,7 +36,7 @@ const ShopView: React.FC = () => {
 
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/products?shopkeeperId=${shopId}&shopName=${shopName}`
+          `https://rogshop02.onrender.com/api/products?shopkeeperId=${shopId}&shopName=${shopName}`
         );
         setProducts(response.data);
         setProgress(100);
@@ -56,7 +56,7 @@ const ShopView: React.FC = () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/products-categories?shopkeeperId=${shopId}&shopName=${shopName}`
+          `https://rogshop02.onrender.com/api/products-categories?shopkeeperId=${shopId}&shopName=${shopName}`
         );
         setCategories(response.data.categories || []);
       } catch (error) {
@@ -116,7 +116,7 @@ const ShopView: React.FC = () => {
           totalBill: product.price * (selectedQuantities[product._id] || 1),
         };
 
-        await axios.post('http://localhost:5000/api/cart', cartItem);
+        await axios.post('https://rogshop02.onrender.com/api/cart', cartItem);
 
         setProgress(Math.round(((i + 1) / selectedItems.length) * 100));
       }

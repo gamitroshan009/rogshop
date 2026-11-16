@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const bcrypt = require('bcrypt'); // For password hashing
+const bcrypt = require('bcryptjs'); // For password hashing
 const jwt = require('jsonwebtoken'); // For generating JWT tokens
 const multer = require('multer'); // For file uploads
 const path = require('path'); // For handling file paths
@@ -226,29 +226,53 @@ app.delete('/api/categories/:id', async (req, res) => {
 });
 
 // Register a new user
+
+const { randomUUID } = require('crypto');
+
+// Register a new user
 app.post('/api/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
-    return res.status(400).json({ message: 'Username, email, and password are required' });
+    return res.status(400).json({
+      message: 'Username, email, and password are required'
+    });
   }
 
   try {
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already exists' });
+      return res.status(400).json({
+        message: 'Email already exists'
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, email, password: hashedPassword });
+
+    const newUser = new User({
+      userId: randomUUID(),
+      username,
+      email,
+      password: hashedPassword
+    });
+
     await newUser.save();
 
-    res.status(201).json({ message: 'User registered successfully' });
+    res.status(201).json({
+      message: 'User registered successfully'
+    });
+
   } catch (error) {
-    console.error('Error registering user:', error);
-    res.status(500).json({ message: 'Error registering user', error: error.message });
+    console.error('Registration error:', error);
+
+    res.status(500).json({
+      message: 'Registration failed',
+      error: error.message
+    });
   }
 });
+
 
 // Login a user
 app.post('/api/auth/login', async (req, res) => {
@@ -390,14 +414,36 @@ app.get('/api/products-categories', async (req, res) => {
 });
 
 // Add a product to the cart
+
 app.post('/api/cart', async (req, res) => {
-  const { userEmail, shopId, shopName, product, quantity, totalBill } = req.body;
+  const {
+    userEmail,
+    shopId,
+    shopName,
+    product,
+    quantity,
+    totalBill
+  } = req.body;
 
   if (!userEmail || !shopId || !shopName || !product || !quantity || !totalBill) {
-    return res.status(400).json({ message: 'All fields are required' });
+    return res.status(400).json({
+      message: 'All fields are required'
+    });
   }
 
   try {
+    const productDetails = await ShopkeeperProducts.findOne({
+      shopkeeperId: shopId,
+      shopName,
+      productName: product
+    });
+
+    if (!productDetails) {
+      return res.status(404).json({
+        message: 'Product not found'
+      });
+    }
+
     const newCartItem = new Cart({
       userEmail,
       shopId,
@@ -405,15 +451,26 @@ app.post('/api/cart', async (req, res) => {
       product,
       quantity,
       totalBill,
+      category: productDetails.category
     });
 
     await newCartItem.save();
-    res.status(201).json({ message: 'Product added to cart', cartItem: newCartItem });
+
+    res.status(201).json({
+      message: 'Product added to cart',
+      cartItem: newCartItem
+    });
+
   } catch (error) {
-    console.error('Error adding to cart:', error);
-    res.status(500).json({ message: 'Error adding to cart', error: error.message });
+    console.error(error);
+
+    res.status(500).json({
+      message: 'Error adding to cart',
+      error: error.message
+    });
   }
 });
+
 
 // Get cart items for a user by email
 app.get('/api/cart', async (req, res) => {
@@ -431,6 +488,67 @@ app.get('/api/cart', async (req, res) => {
     res.status(500).json({ message: 'Error fetching cart items', error: error.message });
   }
 });
+
+
+// Update cart item quantity
+
+app.put('/api/cart/:id', async (req, res) => {
+  const { id } = req.params;
+  const { quantity } = req.body;
+
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return res.status(400).json({
+      message: 'Invalid quantity'
+    });
+  }
+
+  try {
+    const cartItem = await Cart.findById(id);
+
+    if (!cartItem) {
+      return res.status(404).json({
+        message: 'Cart item not found'
+      });
+    }
+
+    const product = await ShopkeeperProducts.findOne({
+      shopkeeperId: cartItem.shopId,
+      shopName: cartItem.shopName,
+      productName: cartItem.product
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        message: 'Product not found'
+      });
+    }
+
+    if (quantity > product.quantity) {
+      return res.status(400).json({
+        message: `Only ${product.quantity} items available`
+      });
+    }
+
+    cartItem.quantity = quantity;
+    cartItem.totalBill = product.price * quantity;
+
+    await cartItem.save();
+
+    res.status(200).json({
+      message: 'Quantity updated successfully',
+      cartItem
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: 'Quantity update failed',
+      error: error.message
+    });
+  }
+});
+
 
 // Remove an item from the cart
 app.delete('/api/cart/:id', async (req, res) => {

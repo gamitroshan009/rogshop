@@ -26,7 +26,7 @@ const AddShopkeeper = () => {
     e.preventDefault();
     try {
       const response = await axios.post<{ message: string }>(
-        'http://localhost:5000/api/shopkeepers',
+        'https://rogshop02.onrender.com/api/shopkeepers',
         formData
       );
       setMessage(response.data.message);
