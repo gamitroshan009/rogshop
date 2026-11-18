@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -11,28 +12,42 @@ interface Product {
   newCategory?: string;
 }
 
+const API_URL = 'http://localhost:5000';
+
 const ManageProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [translatedTerms, setTranslatedTerms] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const shopkeeperId = localStorage.getItem('shopkeeperId');
-  const shopName = localStorage.getItem('shopkeeperName'); // Add this line
+  const shopName = localStorage.getItem('shopkeeperName');
 
+  // Responsive screen
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
     window.addEventListener('resize', handleResize);
 
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fetch products and categories
+  useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('   https://rogshop02.onrender.com/api/products', {
-          params: { shopkeeperId, shopName }, // Send both
+        const response = await axios.get(`${API_URL}/api/products`, {
+          params: { shopkeeperId, shopName },
         });
+
         setProducts(
           response.data.map((p: Product) => ({
             ...p,
@@ -42,6 +57,7 @@ const ManageProducts = () => {
           }))
         );
       } catch (err) {
+        console.error(err);
         setError('Failed to fetch products');
       } finally {
         setLoading(false);
@@ -50,9 +66,13 @@ const ManageProducts = () => {
 
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('   https://rogshop02.onrender.com/api/products-categories', {
-          params: { shopkeeperId },
-        });
+        const response = await axios.get(
+          `${API_URL}/api/products-categories`,
+          {
+            params: { shopkeeperId, shopName },
+          }
+        );
+
         setCategories(response.data.categories || []);
       } catch (err) {
         console.error('Error fetching categories:', err);
@@ -61,9 +81,60 @@ const ManageProducts = () => {
 
     fetchProducts();
     fetchCategories();
-    return () => window.removeEventListener('resize', handleResize);
-  }, [shopkeeperId, shopName]); // <-- Added shopName here
+  }, [shopkeeperId, shopName]);
 
+  // Gujarati / Roman Gujarati Smart Search
+  useEffect(() => {
+    const query = searchTerm.trim();
+
+    if (!query) {
+      setTranslatedTerms([]);
+      setSearchLoading(false);
+      return;
+    }
+
+    let isActive = true;
+
+    const timer = setTimeout(async () => {
+      try {
+        setSearchLoading(true);
+
+        const response = await axios.get(
+          `${API_URL}/api/smart-search/translate`,
+          {
+            params: { q: query },
+          }
+        );
+
+        if (isActive) {
+          const terms = (response.data.terms || [])
+            .map((term: string) =>
+              term.normalize('NFC').trim().toLowerCase()
+            )
+            .filter(Boolean);
+
+          setTranslatedTerms([...new Set(terms)]);
+        }
+      } catch (err) {
+        console.error('Smart search error:', err);
+
+        if (isActive) {
+          setTranslatedTerms([query.toLowerCase()]);
+        }
+      } finally {
+        if (isActive) {
+          setSearchLoading(false);
+        }
+      }
+    }, 400);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [searchTerm]);
+
+  // Edit modal
   const openEditModal = (product: Product) => {
     setSelectedProduct({ ...product });
     setIsModalOpen(true);
@@ -74,18 +145,23 @@ const ManageProducts = () => {
     setSelectedProduct(null);
   };
 
-  const handleModalChange = (field: keyof Product, value: string | number) => {
+  const handleModalChange = (
+    field: keyof Product,
+    value: string | number
+  ) => {
     if (!selectedProduct) return;
+
     setSelectedProduct((prev) =>
       prev ? { ...prev, [field]: value } : null
     );
   };
 
+  // Save product
   const handleSave = async () => {
     if (!selectedProduct) return;
 
     try {
-      await axios.put('   https://rogshop02.onrender.com/api/products', {
+      await axios.put(`${API_URL}/api/products`, {
         productName: selectedProduct.productName,
         newProductName: selectedProduct.newProductName,
         price: selectedProduct.price,
@@ -99,11 +175,13 @@ const ManageProducts = () => {
           p.productName === selectedProduct.productName
             ? {
                 ...p,
-                productName: selectedProduct.newProductName || p.productName,
+                productName:
+                  selectedProduct.newProductName || p.productName,
                 price: selectedProduct.price,
                 profit: selectedProduct.profit,
                 quantity: selectedProduct.quantity,
-                category: selectedProduct.newCategory || p.category,
+                category:
+                  selectedProduct.newCategory || p.category,
                 newProductName: selectedProduct.newProductName,
                 newCategory: selectedProduct.newCategory,
               }
@@ -111,33 +189,60 @@ const ManageProducts = () => {
         )
       );
 
-      alert(`✅ Product "${selectedProduct.productName}" updated successfully.`);
+      alert(
+        `Product "${selectedProduct.productName}" updated successfully.`
+      );
+
       closeModal();
     } catch (err) {
       console.error('Error saving product:', err);
-      alert('❌ Failed to update product.');
+      alert('Failed to update product.');
     }
   };
 
+  // Delete product
   const handleDelete = async (productName: string) => {
-    const confirmDelete = window.confirm(`Are you sure you want to delete "${productName}"?`);
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete "${productName}"?`
+    );
+
     if (!confirmDelete) return;
 
     try {
-      await axios.delete('   https://rogshop02.onrender.com/api/products', {
+      await axios.delete(`${API_URL}/api/products`, {
         data: { productName },
       });
-      setProducts(products.filter((p) => p.productName !== productName));
-      alert(`🗑️ Product "${productName}" deleted successfully.`);
+
+      setProducts((prev) =>
+        prev.filter((p) => p.productName !== productName)
+      );
+
+      alert(`Product "${productName}" deleted successfully.`);
     } catch (err) {
       console.error('Error deleting product:', err);
-      alert('❌ Failed to delete product.');
+      alert('Failed to delete product.');
     }
   };
 
-  const filteredProducts = products.filter((p) =>
-    p.productName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Smart product filtering
+  const filteredProducts = products.filter((product) => {
+    const productText = (
+      `${product.productName} ${product.category}`
+    )
+      .normalize('NFC')
+      .toLowerCase();
+
+    const terms = [
+      searchTerm,
+      ...translatedTerms,
+    ]
+      .map((term) =>
+        term.normalize('NFC').trim().toLowerCase()
+      )
+      .filter(Boolean);
+
+    return terms.some((term) => productText.includes(term));
+  });
 
   const styles: { [key: string]: React.CSSProperties } = {
     container: {
@@ -235,6 +340,8 @@ const ManageProducts = () => {
       borderRadius: '10px',
       width: '90%',
       maxWidth: '500px',
+      maxHeight: '90vh',
+      overflowY: 'auto',
       textAlign: 'left',
     },
     modalInput: {
@@ -268,32 +375,69 @@ const ManageProducts = () => {
     <div style={styles.container}>
       <h2 style={styles.heading}>Manage Products</h2>
 
+      {/* Search */}
       <div style={styles.searchWrapper}>
         <input
           type="text"
-          placeholder="🔍 Search products..."
+          placeholder="Search Gujarati / English products..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={styles.searchInput}
         />
+
+        {searchLoading && (
+          <p style={{ color: '#777', marginTop: '8px' }}>
+            Converting search...
+          </p>
+        )}
       </div>
 
-      {loading && <p style={styles.loading}>Loading products...</p>}
+      {loading && (
+        <p style={styles.loading}>Loading products...</p>
+      )}
+
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
       {!loading && !error && (
         <>
-          {isMobile ? (
-            filteredProducts.map((product) => (
-              <div key={product.productName} style={styles.productCard}>
-                <p><strong>Name:</strong> {product.productName}</p>
-                <p><strong>Price:</strong> ₹{product.price}</p>
-                <p><strong>Profit:</strong> ₹{product.profit}</p>
-                <p><strong>Quantity:</strong> {product.quantity}</p>
-                <p><strong>Category:</strong> {product.category}</p>
+          {filteredProducts.length === 0 ? (
+            <p style={styles.loading}>No products found.</p>
+          ) : isMobile ? (
+            filteredProducts.map((product, index) => (
+              <div
+                key={`${product.productName}-${index}`}
+                style={styles.productCard}
+              >
+                <p>
+                  <strong>Name:</strong> {product.productName}
+                </p>
+                <p>
+                  <strong>Price:</strong> ₹{product.price}
+                </p>
+                <p>
+                  <strong>Profit:</strong> ₹{product.profit}
+                </p>
+                <p>
+                  <strong>Quantity:</strong> {product.quantity}
+                </p>
+                <p>
+                  <strong>Category:</strong> {product.category}
+                </p>
+
                 <div>
-                  <button style={styles.editButton} onClick={() => openEditModal(product)}>Edit</button>
-                  <button style={styles.deleteButton} onClick={() => handleDelete(product.productName)}>Delete</button>
+                  <button
+                    style={styles.editButton}
+                    onClick={() => openEditModal(product)}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    style={styles.deleteButton}
+                    onClick={() => handleDelete(product.productName)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))
@@ -310,17 +454,31 @@ const ManageProducts = () => {
                     <th style={styles.th}>Actions</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {filteredProducts.map((product) => (
-                    <tr key={product.productName}>
-                      <td style={styles.td}>{product.productName}</td>
+                  {filteredProducts.map((product, index) => (
+                    <tr key={`${product.productName}-${index}`}>
+                      <td style={styles.td}>
+                        {product.productName}
+                      </td>
                       <td style={styles.td}>₹{product.price}</td>
                       <td style={styles.td}>₹{product.profit}</td>
                       <td style={styles.td}>{product.quantity}</td>
                       <td style={styles.td}>{product.category}</td>
                       <td style={styles.td}>
-                        <button style={styles.editButton} onClick={() => openEditModal(product)}>Edit</button>
-                        <button style={styles.deleteButton} onClick={() => handleDelete(product.productName)}>Delete</button>
+                        <button
+                          style={styles.editButton}
+                          onClick={() => openEditModal(product)}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          style={styles.deleteButton}
+                          onClick={() => handleDelete(product.productName)}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -331,67 +489,103 @@ const ManageProducts = () => {
         </>
       )}
 
+      {/* Edit Modal */}
       {isModalOpen && selectedProduct && (
         <div style={styles.modalOverlay}>
           <div style={styles.modal}>
             <h3>Edit Product</h3>
+
             <label>
               Product Name:
-              <input type="text" value={selectedProduct.productName} disabled style={styles.modalInput} />
+              <input
+                type="text"
+                value={selectedProduct.productName}
+                disabled
+                style={styles.modalInput}
+              />
             </label>
+
             <label>
               New Product Name:
               <input
                 type="text"
-                value={selectedProduct.newProductName}
-                onChange={(e) => handleModalChange('newProductName', e.target.value)}
+                value={selectedProduct.newProductName || ''}
+                onChange={(e) =>
+                  handleModalChange('newProductName', e.target.value)
+                }
                 style={styles.modalInput}
               />
             </label>
+
             <label>
               Price:
               <input
                 type="number"
                 value={selectedProduct.price}
-                onChange={(e) => handleModalChange('price', parseFloat(e.target.value))}
+                onChange={(e) =>
+                  handleModalChange('price', Number(e.target.value))
+                }
                 style={styles.modalInput}
               />
             </label>
+
             <label>
               Profit:
               <input
                 type="number"
                 value={selectedProduct.profit}
-                onChange={(e) => handleModalChange('profit', parseFloat(e.target.value))}
+                onChange={(e) =>
+                  handleModalChange('profit', Number(e.target.value))
+                }
                 min="0"
                 step="0.01"
                 style={styles.modalInput}
               />
             </label>
+
             <label>
               Quantity:
               <input
                 type="number"
                 value={selectedProduct.quantity}
-                onChange={(e) => handleModalChange('quantity', parseInt(e.target.value))}
+                onChange={(e) =>
+                  handleModalChange('quantity', Number(e.target.value))
+                }
                 style={styles.modalInput}
               />
             </label>
+
             <label>
               Category:
               <select
-                value={selectedProduct.newCategory}
-                onChange={(e) => handleModalChange('newCategory', e.target.value)}
+                value={selectedProduct.newCategory || ''}
+                onChange={(e) =>
+                  handleModalChange('newCategory', e.target.value)
+                }
                 style={styles.modalInput}
               >
                 {categories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
                 ))}
               </select>
             </label>
+
             <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-              <button style={styles.saveButton} onClick={handleSave}>Save</button>
-              <button style={styles.cancelButton} onClick={closeModal}>Cancel</button>
+              <button
+                style={styles.saveButton}
+                onClick={handleSave}
+              >
+                Save
+              </button>
+
+              <button
+                style={styles.cancelButton}
+                onClick={closeModal}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

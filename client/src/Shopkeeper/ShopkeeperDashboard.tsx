@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import type { CSSProperties } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-// Define the Product interface
 interface Product {
   _id: string;
   productName: string;
@@ -12,24 +14,33 @@ interface Product {
 }
 
 const ShopkeeperDashboard = () => {
-  const [products, setProducts] = useState<Product[]>([]); // Type the products state
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Get shopkeeper details from localStorage
-  const shopkeeperId = localStorage.getItem('shopkeeperId'); // Assuming shopkeeperId is stored in localStorage during login
-  const shopName = localStorage.getItem('shopkeeperName'); // Assuming shopName is stored in localStorage during login
+  const shopkeeperId = localStorage.getItem('shopkeeperId');
+  const shopName = localStorage.getItem('shopkeeperName') || 'My Shop';
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
+        setLoading(true);
+        setError('');
+
         const response = await axios.get<Product[]>(
-          `   https://rogshop02.onrender.com/api/products?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
+          'http://localhost:5000/api/products',
+          {
+            params: {
+              shopkeeperId,
+              shopName,
+            },
+          }
         );
+
         setProducts(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch products');
+      } catch {
+        setError('Failed to fetch products. Please try again.');
+      } finally {
         setLoading(false);
       }
     };
@@ -37,105 +48,240 @@ const ShopkeeperDashboard = () => {
     fetchProducts();
   }, [shopkeeperId, shopName]);
 
-  if (loading) {
-    return <p>Loading products...</p>;
-  }
-
-  if (error) {
-    return <p style={{ color: 'red' }}>{error}</p>;
-  }
-
   const totalProfit = products.reduce(
-    (sum, product) => sum + (product.profit || 0) * product.quantity,
+    (sum, product) =>
+      sum + Number(product.profit || 0) * Number(product.quantity || 0),
     0
   );
 
-  return (
-    <div style={styles.container}>
-      <h2 style={styles.heading}>{shopName}'s Products</h2>
-      <div style={styles.totalProfitCard}>
-        <strong>Total Profit:</strong>{' '}
-        <span style={styles.totalProfitAmount}>₹{totalProfit.toFixed(2)}</span>
+  const totalStock = products.reduce(
+    (sum, product) => sum + Number(product.quantity || 0),
+    0
+  );
+
+  const styles: { [key: string]: CSSProperties } = {
+    page: {
+      minHeight: '100vh',
+      background: '#f4f7fb',
+      paddingBottom: '40px',
+    },
+    content: {
+      maxWidth: '1200px',
+      margin: 'auto',
+      padding: '25px 20px',
+    },
+    summaryCard: {
+      background: '#fff',
+      borderRadius: '16px',
+      padding: '22px',
+      boxShadow: '0 3px 15px rgba(0,0,0,0.05)',
+      border: '1px solid #edf0f5',
+      height: '100%',
+    },
+    summaryLabel: {
+      color: '#78869a',
+      fontSize: '14px',
+      marginBottom: '8px',
+      fontWeight: 500,
+    },
+    summaryValue: {
+      fontSize: '27px',
+      fontWeight: 700,
+      color: '#075fc9',
+      margin: 0,
+    },
+    sectionTitle: {
+      fontSize: '21px',
+      fontWeight: 700,
+      color: '#26364a',
+    },
+    productCard: {
+      background: '#fff',
+      borderRadius: '16px',
+      border: '1px solid #edf0f5',
+      overflow: 'hidden',
+      boxShadow: '0 3px 12px rgba(0,0,0,0.05)',
+      height: '100%',
+    },
+    productImage: {
+      width: '100%',
+      height: '180px',
+      objectFit: 'contain',
+      padding: '15px',
+      background: '#f8faff',
+    },
+    productBody: {
+      padding: '18px',
+    },
+    productName: {
+      fontSize: '17px',
+      fontWeight: 700,
+      color: '#26364a',
+      marginBottom: '15px',
+    },
+    detail: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      marginBottom: '10px',
+      fontSize: '14px',
+      color: '#68778a',
+    },
+    empty: {
+      background: '#fff',
+      borderRadius: '16px',
+      padding: '45px 20px',
+      textAlign: 'center',
+      color: '#78869a',
+      border: '1px solid #edf0f5',
+    },
+  };
+
+  if (loading) {
+    return (
+      <div
+        className="d-flex flex-column justify-content-center align-items-center"
+        style={{ minHeight: '80vh' }}
+      >
+        <div className="spinner-border text-primary mb-3" />
+        <h6 className="text-secondary">Loading products...</h6>
       </div>
-      <div style={styles.productList}>
-        {products.map((product) => (
-          <div key={product._id} style={styles.productCard}>
-            
-            <h3 style={styles.productName}>{product.productName}</h3>
-            <p style={styles.productDetail}>
-              <strong>Price:</strong> ₹{product.price}
-            </p>
-            <p style={styles.productDetail}>
-              <strong>Quantity:</strong> {product.quantity}
-            </p>
-            <p style={styles.productDetail}>
-              <strong>Profit:</strong> ₹{Number(product.profit || 0).toFixed(2)}
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mt-5">
+        <div className="alert alert-danger text-center">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.content}>
+        {/* Summary Cards */}
+        <div className="row g-3 mb-4">
+          <div className="col-md-4">
+            <div style={styles.summaryCard}>
+              <p style={styles.summaryLabel}>Total Products</p>
+              <h3 style={styles.summaryValue}>
+                {products.length}
+              </h3>
+            </div>
+          </div>
+
+          <div className="col-md-4">
+            <div style={styles.summaryCard}>
+              <p style={styles.summaryLabel}>Total Stock</p>
+              <h3 style={styles.summaryValue}>
+                {totalStock}
+              </h3>
+            </div>
+          </div>
+
+          <div className="col-md-4">
+            <div style={styles.summaryCard}>
+              <p style={styles.summaryLabel}>Total Profit</p>
+              <h3 style={{ ...styles.summaryValue, color: '#15945a' }}>
+                ₹{totalProfit.toFixed(2)}
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Products */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h4 style={styles.sectionTitle}>My Products</h4>
+
+          <span className="badge rounded-pill bg-primary px-3 py-2">
+            {products.length} Products
+          </span>
+        </div>
+
+        {products.length === 0 ? (
+          <div style={styles.empty}>
+            <h5 className="fw-bold">No Products Found</h5>
+            <p className="mb-0">
+              Your shop products will appear here.
             </p>
           </div>
-        ))}
+        ) : (
+          <div className="row g-4">
+            {products.map((product) => (
+              <div
+                className="col-12 col-sm-6 col-lg-4 col-xl-3"
+                key={product._id}
+              >
+                <div style={styles.productCard}>
+                  {product.productImage ? (
+                    <img
+                      src={product.productImage}
+                      alt={product.productName}
+                      style={styles.productImage}
+                    />
+                  ) : (
+                    <div
+                      className="d-flex justify-content-center align-items-center"
+                      style={{
+                        ...styles.productImage,
+                        color: '#9aa8ba',
+                        fontSize: '45px',
+                      }}
+                    >
+                      <i className="bi bi-image" />
+                    </div>
+                  )}
+
+                  <div style={styles.productBody}>
+                    <h5 style={styles.productName}>
+                      {product.productName}
+                    </h5>
+
+                    <div style={styles.detail}>
+                      <span>Price</span>
+                      <strong className="text-primary">
+                        ₹{Number(product.price).toFixed(2)}
+                      </strong>
+                    </div>
+
+                    <div style={styles.detail}>
+                      <span>Quantity</span>
+                      <strong className="text-dark">
+                        {product.quantity}
+                      </strong>
+                    </div>
+
+                    <div style={styles.detail}>
+                      <span>Profit / Unit</span>
+                      <strong className="text-success">
+                        ₹{Number(product.profit || 0).toFixed(2)}
+                      </strong>
+                    </div>
+
+                    <hr />
+
+                    <div style={styles.detail}>
+                      <strong className="text-dark">
+                        Total Profit
+                      </strong>
+                      <strong className="text-success">
+                        ₹{(
+                          Number(product.profit || 0) *
+                          Number(product.quantity || 0)
+                        ).toFixed(2)}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    maxWidth: '800px',
-    margin: '2rem auto',
-    padding: '2rem',
-    textAlign: 'center' as 'center', // Explicitly cast textAlign
-    border: '1px solid #ddd',
-    borderRadius: '10px',
-    backgroundColor: '#f9f9f9',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  },
-  heading: {
-    fontSize: '2rem',
-    color: '#007bff',
-    marginBottom: '1rem',
-  },
-  totalProfitCard: {
-    padding: '1rem',
-    marginBottom: '1.5rem',
-    borderRadius: '10px',
-    backgroundColor: '#eaf4ff',
-    border: '1px solid #007bff',
-    fontSize: '1.2rem',
-  },
-  totalProfitAmount: {
-    color: '#007bff',
-    fontSize: '1.4rem',
-  },
-  productList: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '1rem',
-  },
-  productCard: {
-    padding: '1rem',
-    border: '1px solid #ddd',
-    borderRadius: '10px',
-    backgroundColor: '#fff',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    textAlign: 'left' as 'left', // Explicitly cast textAlign
-  },
-  productImage: {
-    width: '100%',
-    height: '150px',
-    objectFit: 'cover' as 'cover', // Explicitly cast objectFit
-    borderRadius: '5px',
-    marginBottom: '1rem',
-  },
-  productName: {
-    fontSize: '1.2rem',
-    color: '#007bff',
-    marginBottom: '0.5rem',
-  },
-  productDetail: {
-    fontSize: '1rem',
-    color: '#555',
-    marginBottom: '0.5rem',
-  },
 };
 
 export default ShopkeeperDashboard;

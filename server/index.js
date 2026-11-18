@@ -758,6 +758,44 @@ app.delete('/api/products-categories', async (req, res) => {
     res.status(500).json({ message: 'Error deleting category', error: error.message });
   }
 });
+//search api 
+
+
+app.get('/api/smart-search/translate', async (req, res) => {
+  try {
+    const query = String(req.query.q || '').trim();
+
+    if (!query) {
+      return res.json({ terms: [] });
+    }
+
+    const url =
+      `https://inputtools.google.com/request?text=${encodeURIComponent(query)}` +
+      `&itc=gu-t-i0-und&num=5&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    let gujaratiText = '';
+
+    if (data[0] === 'SUCCESS') {
+      gujaratiText = data[1]
+        .map(item => item[1]?.[0] || '')
+        .join(' ');
+    }
+
+    res.json({
+      terms: [...new Set([
+        query.toLowerCase(),
+        gujaratiText.toLowerCase()
+      ])]
+    });
+
+  } catch (error) {
+    console.error('Smart search error:', error);
+    res.status(500).json({ message: 'Transliteration failed' });
+  }
+});
 
 // Start the server
 const PORT = process.env.PORT || 5000;

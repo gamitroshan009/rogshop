@@ -32,7 +32,7 @@ const ShopkeeperOrder = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get('   https://rogshop02.onrender.com/api/orders/shop', {
+        const response = await axios.get('   http://localhost:5000/api/orders/shop', {
           params: { shopName, shopId },
         });
         setOrders(response.data);
@@ -64,7 +64,7 @@ const ShopkeeperOrder = () => {
     if (!confirmComplete) return;
 
     try {
-      const response = await axios.put(`   https://rogshop02.onrender.com/api/orders/${orderId}`, {
+      const response = await axios.put(`   http://localhost:5000/api/orders/${orderId}`, {
         received: 'Complete',
       });
 
