@@ -52,12 +52,12 @@ app.get('/api/products', async (req, res) => {
 // Update a product by ID
 app.put('/api/products/:id', async (req, res) => {
   const { id } = req.params;
-  const { productName, price, quantity } = req.body;
+  const { productName, price, profit, quantity } = req.body;
 
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
-      { productName, price, quantity },
+      { productName, price, profit, quantity },
       { new: true }
     );
     res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
@@ -69,16 +69,16 @@ app.put('/api/products/:id', async (req, res) => {
 
 // Update a product by productName
 app.put('/api/products', async (req, res) => {
-  const { productName, newProductName, price, quantity } = req.body;
+  const { productName, newProductName, price, profit, quantity, category } = req.body;
 
-  if (!productName || !newProductName || !price || !quantity) {
+  if (!productName || !newProductName || price === undefined || profit === undefined || !quantity || !category) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
   try {
     const updatedProduct = await ShopkeeperProducts.findOneAndUpdate(
       { productName }, // Find the product by productName
-      { productName: newProductName, price: Number(price), quantity: Number(quantity) }, // Update fields
+      { productName: newProductName, price: Number(price), profit: Number(profit), quantity: Number(quantity), category }, // Update fields
       { new: true } // Return the updated document
     );
 
@@ -95,16 +95,16 @@ app.put('/api/products', async (req, res) => {
 
 // Update a product by shopName and productName in ShopkeeperProducts table
 app.put('/api/products', async (req, res) => {
-  const { shopName, productName, newProductName, price, quantity } = req.body;
+  const { shopName, productName, newProductName, price, profit, quantity, category } = req.body;
 
-  if (!shopName || !productName || !newProductName || !price || !quantity) {
+  if (!shopName || !productName || !newProductName || price === undefined || profit === undefined || !quantity || !category) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
   try {
     const updatedProduct = await ShopkeeperProducts.findOneAndUpdate(
       { shopName, productName }, // Find the product by shopName and productName
-      { productName: newProductName, price: Number(price), quantity: Number(quantity) }, // Update fields
+      { productName: newProductName, price: Number(price), profit: Number(profit), quantity: Number(quantity), category }, // Update fields
       { new: true } // Return the updated document
     );
 
@@ -275,6 +275,8 @@ app.post('/api/auth/register', async (req, res) => {
 
 
 // Login a user
+
+
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -589,6 +591,7 @@ app.post('/api/orders', async (req, res) => {
           productName: product.productName,
           quantity: product.quantity,
           price: product.price,
+          profit: dbProduct.profit || 0,
           category: dbProduct.category, // Include the category from the database
         };
       })
@@ -700,10 +703,10 @@ app.put('/api/orders/:id', async (req, res) => {
 
 // Add a new product
 app.post('/api/products', async (req, res) => {
-  const { shopkeeperId, shopName, productName, price, quantity, category } = req.body;
+  const { shopkeeperId, shopName, productName, price, profit, quantity, category } = req.body;
 
   // Validate required fields
-  if (!shopkeeperId || !shopName || !productName || !price || !quantity || !category) {
+  if (!shopkeeperId || !shopName || !productName || price === undefined || profit === undefined || !quantity || !category) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
@@ -714,6 +717,7 @@ app.post('/api/products', async (req, res) => {
       shopName,
       productName,
       price,
+      profit,
       quantity,
       category,
     });

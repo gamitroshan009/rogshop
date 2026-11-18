@@ -5,6 +5,7 @@ interface Product {
   productName: string;
   quantity: number;
   price: number;
+  profit: number;
   category: string;
 }
 
@@ -21,21 +22,26 @@ interface Props {
   order: Order;
 }
 
+
+
 const OrderPDF: React.FC<Props> = ({ order }) => {
 
-  // Grand Total
   const totalPrice = order.products.reduce(
     (sum, p) => sum + p.quantity * p.price,
     0
   );
 
-  // Total Quantity
   const totalQuantity = order.products.reduce(
     (sum, p) => sum + p.quantity,
     0
   );
 
-  // Group Products Category Wise
+  const totalProfit = order.products.reduce(
+    (sum, p) => sum + (p.profit || 0) * p.quantity,
+    0
+  );
+
+  // Category Wise Sorting (Category name hidden)
   const groupedProducts = order.products.reduce<
     Record<string, Product[]>
   >((groups, product) => {
@@ -50,9 +56,66 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
     return groups;
   }, {});
 
-  // Sort Categories
   const sortedCategories = Object.keys(groupedProducts).sort(
     (a, b) => a.localeCompare(b)
+  );
+
+  const sortedProducts = sortedCategories.flatMap(
+    category => groupedProducts[category]
+  );
+
+  // Split products into two sides
+  const middleIndex = Math.ceil(sortedProducts.length / 2);
+
+  const leftProducts = sortedProducts.slice(0, middleIndex);
+  const rightProducts = sortedProducts.slice(middleIndex);
+
+
+
+  const headerCell: React.CSSProperties = {
+    border: '1px solid #333',
+    padding: '7px 4px',
+    fontWeight: 'bold',
+    backgroundColor: '#eaf4ff',
+    textAlign: 'center',
+    fontSize: '11px',
+  };
+
+  const cellStyle: React.CSSProperties = {
+    border: '1px solid #ccc',
+    padding: '8px 4px',
+    fontSize: '10px',
+    textAlign: 'center',
+    wordBreak: 'break-word',
+  };
+
+  const renderProduct = (product?: Product, serialNumber?: number) => (
+    <>
+      <td style={cellStyle}>
+        {serialNumber ?? ''}
+      </td>
+      <td style={{ ...cellStyle, textAlign: 'left' }}>
+        {product?.productName || ''}
+      </td>
+
+      <td style={cellStyle}>
+        {product?.quantity ?? ''}
+      </td>
+
+      <td style={cellStyle}>
+        {product ? `₹${Number(product.price).toFixed(2)}` : ''}
+      </td>
+
+      <td style={cellStyle}>
+        {product ? `₹${Number(product.profit || 0).toFixed(2)}` : ''}
+      </td>
+
+      <td style={cellStyle}>
+        {product
+          ? `₹${(product.price * product.quantity).toFixed(2)}`
+          : ''}
+      </td>
+    </>
   );
 
   return (
@@ -60,6 +123,11 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
       <style>
         {`
           @media print {
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
+
             body {
               margin: 0;
               -webkit-print-color-adjust: exact;
@@ -67,11 +135,11 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
             }
 
             .no-print {
-              display: none;
+              display: none !important;
             }
 
-            .category-row {
-              break-after: avoid;
+            table {
+              page-break-inside: auto;
             }
 
             tr {
@@ -81,17 +149,17 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
         `}
       </style>
 
-      {/* Invoice Container */}
       <div
         id={`pdf-content-${order._id}`}
         style={{
           maxWidth: '900px',
           margin: 'auto',
           backgroundColor: '#fff',
-          padding: '30px',
+          padding: '25px',
           fontFamily: '"Segoe UI", sans-serif',
           color: '#333',
           border: '1px solid #ddd',
+          boxSizing: 'border-box',
         }}
       >
 
@@ -100,7 +168,7 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
           style={{
             borderBottom: '3px solid #007bff',
             paddingBottom: '15px',
-            marginBottom: '25px',
+            marginBottom: '20px',
           }}
         >
           <h1
@@ -113,7 +181,7 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
             {order.shopName}
           </h1>
 
-          <p style={{ fontSize: '14px', marginTop: '8px' }}>
+          <p style={{ fontSize: '13px', marginTop: '8px' }}>
             <strong>Invoice ID:</strong> {order._id}
           </p>
         </div>
@@ -124,11 +192,12 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
             display: 'flex',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            marginBottom: '25px',
             gap: '15px',
+            marginBottom: '20px',
+            fontSize: '13px',
           }}
         >
-          <div style={{ fontSize: '14px' }}>
+          <div>
             <p>
               <strong>Date:</strong>{' '}
               {new Date(order.createdAt).toLocaleDateString()}
@@ -143,152 +212,108 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
             </p>
           </div>
 
-          <div
-            style={{
-              fontSize: '14px',
-              textAlign: 'right',
-              maxWidth: '300px',
-            }}
-          >
+          <div style={{ textAlign: 'right', maxWidth: '300px' }}>
             <p><strong>Delivery Address:</strong></p>
             <p>{order.address}</p>
           </div>
         </div>
 
-        {/* Category Wise Product Table */}
-        <table
+        
+{/* Two Separate Product Tables */}
+<div
+  style={{
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '15px',
+    alignItems: 'start',
+  }}
+>
+  {/* Left Table */}
+  <table
+    style={{
+      width: '100%',
+      borderCollapse: 'collapse',
+      tableLayout: 'fixed',
+    }}
+  >
+    <thead>
+      <tr>
+        <th style={headerCell}>Sr. No.</th>
+        <th style={headerCell}>Product Name</th>
+        <th style={headerCell}>Qty</th>
+        <th style={headerCell}>Price</th>
+        <th style={headerCell}>Profit</th>
+        <th style={headerCell}>Total</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {leftProducts.map((product, index) => (
+        <tr key={index}>
+          {renderProduct(product, index + 1)}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  {/* Right Table */}
+  <table
+    style={{
+      width: '100%',
+      borderCollapse: 'collapse',
+      tableLayout: 'fixed',
+    }}
+  >
+    <thead>
+      <tr>
+        <th style={headerCell}>Sr. No.</th>
+        <th style={headerCell}>Product Name</th>
+        <th style={headerCell}>Qty</th>
+        <th style={headerCell}>Price</th>
+        <th style={headerCell}>Profit</th>
+        <th style={headerCell}>Total</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {rightProducts.map((product, index) => (
+        <tr key={index}>
+          {renderProduct(product, middleIndex + index + 1)}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+        {/* Grand Total */}
+        <div
           style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            fontSize: '13px',
+            marginTop: '25px',
+            padding: '14px',
+            backgroundColor: '#eaf4ff',
+            border: '1px solid #007bff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontWeight: 'bold',
+            fontSize: '16px',
           }}
         >
-          <thead>
-            <tr style={{ backgroundColor: '#eaf4ff' }}>
-              <th style={cellHeaderStyle}>Product Name</th>
-              <th style={cellHeaderStyle}>Quantity</th>
-              <th style={cellHeaderStyle}>Unit Price</th>
-              <th style={cellHeaderStyle}>Total</th>
-            </tr>
-          </thead>
+          <div>
+            <div>GRAND TOTAL</div>
+            <div style={{ marginTop: '6px', fontSize: '13px', color: '#555' }}>
+              TOTAL PROFIT: ₹{totalProfit.toFixed(2)}
+            </div>
+          </div>
 
-          <tbody>
-            {sortedCategories.map((category) => {
-
-              const products = groupedProducts[category];
-
-              const categoryTotal = products.reduce(
-                (sum, p) => sum + p.quantity * p.price,
-                0
-              );
-
-              return (
-                <React.Fragment key={category}>
-
-                  {/* Category Heading */}
-                  <tr className="category-row">
-                    <td
-                      colSpan={4}
-                      style={{
-                        padding: '12px',
-                        backgroundColor: '#e9ecef',
-                        color: '#007bff',
-                        fontWeight: 'bold',
-                        fontSize: '15px',
-                        border: '1px solid #ddd',
-                        textAlign: 'left',
-                      }}
-                    >
-                      {category}
-                    </td>
-                  </tr>
-
-                  {/* Products */}
-                  {products.map((p, index) => (
-                    <tr key={`${category}-${index}`}>
-                      <td style={cellStyle}>
-                        {p.productName}
-                      </td>
-
-                      <td style={cellStyle}>
-                        {p.quantity}
-                      </td>
-
-                      <td style={cellStyle}>
-                        ₹{Number(p.price).toFixed(2)}
-                      </td>
-
-                      <td style={cellStyle}>
-                        ₹{(p.price * p.quantity).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* Category Subtotal */}
-                  <tr>
-                    <td
-                      colSpan={3}
-                      style={{
-                        ...cellStyle,
-                        textAlign: 'right',
-                        fontWeight: 'bold',
-                        backgroundColor: '#f8f9fa',
-                      }}
-                    >
-                      {category} Subtotal
-                    </td>
-
-                    <td
-                      style={{
-                        ...cellStyle,
-                        fontWeight: 'bold',
-                        backgroundColor: '#f8f9fa',
-                      }}
-                    >
-                      ₹{categoryTotal.toFixed(2)}
-                    </td>
-                  </tr>
-
-                </React.Fragment>
-              );
-            })}
-
-            {/* Grand Total */}
-            <tr>
-              <td
-                colSpan={3}
-                style={{
-                  ...cellStyle,
-                  textAlign: 'right',
-                  fontWeight: 'bold',
-                  fontSize: '15px',
-                  backgroundColor: '#eaf4ff',
-                }}
-              >
-                GRAND TOTAL
-              </td>
-
-              <td
-                style={{
-                  ...cellStyle,
-                  fontWeight: 'bold',
-                  fontSize: '15px',
-                  color: '#007bff',
-                  backgroundColor: '#eaf4ff',
-                }}
-              >
-                ₹{totalPrice.toFixed(2)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          <span style={{ color: '#007bff' }}>₹{totalPrice.toFixed(2)}</span>
+        </div>
 
         {/* Footer */}
         <div
           style={{
             textAlign: 'center',
-            marginTop: '40px',
-            fontSize: '13px',
+            marginTop: '30px',
+            fontSize: '12px',
             color: '#888',
             borderTop: '1px solid #ddd',
             paddingTop: '15px',
@@ -301,21 +326,6 @@ const OrderPDF: React.FC<Props> = ({ order }) => {
       </div>
     </div>
   );
-};
-
-// Table Styles
-const cellStyle: React.CSSProperties = {
-  border: '1px solid #ddd',
-  padding: '10px',
-  textAlign: 'center',
-  wordBreak: 'break-word',
-};
-
-const cellHeaderStyle: React.CSSProperties = {
-  ...cellStyle,
-  fontWeight: 'bold',
-  backgroundColor: '#eaf4ff',
-  borderBottom: '2px solid #007bff',
 };
 
 export default OrderPDF;

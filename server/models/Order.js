@@ -12,6 +12,7 @@ const OrderSchema = new mongoose.Schema({
       productName: { type: String, required: true },
       quantity: { type: Number, required: true },
       price: { type: Number, required: true },
+      profit: { type: Number, required: true, default: 0 },
       category: { type: String, required: true }, // Add category field
     },
   ],

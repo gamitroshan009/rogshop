@@ -4,6 +4,7 @@ import axios from 'axios';
 interface Product {
   productName: string;
   price: number;
+  profit: number;
   quantity: number;
   category: string;
   newProductName?: string;
@@ -29,12 +30,13 @@ const ManageProducts = () => {
 
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('https://rogshop02.onrender.com/api/products', {
+        const response = await axios.get('   http://localhost:5000/api/products', {
           params: { shopkeeperId, shopName }, // Send both
         });
         setProducts(
           response.data.map((p: Product) => ({
             ...p,
+            profit: p.profit ?? 0,
             newProductName: p.productName,
             newCategory: p.category,
           }))
@@ -48,7 +50,7 @@ const ManageProducts = () => {
 
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('https://rogshop02.onrender.com/api/products-categories', {
+        const response = await axios.get('   http://localhost:5000/api/products-categories', {
           params: { shopkeeperId },
         });
         setCategories(response.data.categories || []);
@@ -83,10 +85,11 @@ const ManageProducts = () => {
     if (!selectedProduct) return;
 
     try {
-      await axios.put('https://rogshop02.onrender.com/api/products', {
+      await axios.put('   http://localhost:5000/api/products', {
         productName: selectedProduct.productName,
         newProductName: selectedProduct.newProductName,
         price: selectedProduct.price,
+        profit: selectedProduct.profit,
         quantity: selectedProduct.quantity,
         category: selectedProduct.newCategory,
       });
@@ -98,6 +101,7 @@ const ManageProducts = () => {
                 ...p,
                 productName: selectedProduct.newProductName || p.productName,
                 price: selectedProduct.price,
+                profit: selectedProduct.profit,
                 quantity: selectedProduct.quantity,
                 category: selectedProduct.newCategory || p.category,
                 newProductName: selectedProduct.newProductName,
@@ -120,7 +124,7 @@ const ManageProducts = () => {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete('https://rogshop02.onrender.com/api/products', {
+      await axios.delete('   http://localhost:5000/api/products', {
         data: { productName },
       });
       setProducts(products.filter((p) => p.productName !== productName));
@@ -284,6 +288,7 @@ const ManageProducts = () => {
               <div key={product.productName} style={styles.productCard}>
                 <p><strong>Name:</strong> {product.productName}</p>
                 <p><strong>Price:</strong> ₹{product.price}</p>
+                <p><strong>Profit:</strong> ₹{product.profit}</p>
                 <p><strong>Quantity:</strong> {product.quantity}</p>
                 <p><strong>Category:</strong> {product.category}</p>
                 <div>
@@ -299,6 +304,7 @@ const ManageProducts = () => {
                   <tr>
                     <th style={styles.th}>Product Name</th>
                     <th style={styles.th}>Price</th>
+                    <th style={styles.th}>Profit</th>
                     <th style={styles.th}>Quantity</th>
                     <th style={styles.th}>Category</th>
                     <th style={styles.th}>Actions</th>
@@ -309,6 +315,7 @@ const ManageProducts = () => {
                     <tr key={product.productName}>
                       <td style={styles.td}>{product.productName}</td>
                       <td style={styles.td}>₹{product.price}</td>
+                      <td style={styles.td}>₹{product.profit}</td>
                       <td style={styles.td}>{product.quantity}</td>
                       <td style={styles.td}>{product.category}</td>
                       <td style={styles.td}>
@@ -347,6 +354,17 @@ const ManageProducts = () => {
                 type="number"
                 value={selectedProduct.price}
                 onChange={(e) => handleModalChange('price', parseFloat(e.target.value))}
+                style={styles.modalInput}
+              />
+            </label>
+            <label>
+              Profit:
+              <input
+                type="number"
+                value={selectedProduct.profit}
+                onChange={(e) => handleModalChange('profit', parseFloat(e.target.value))}
+                min="0"
+                step="0.01"
                 style={styles.modalInput}
               />
             </label>

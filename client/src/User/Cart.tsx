@@ -9,6 +9,7 @@ interface Product {
   shopkeeperId: string;
   quantity: number;
   price: number;
+  profit: number;
 }
 
 interface CartItem {
@@ -25,7 +26,7 @@ interface MergedCartItem extends CartItem {
   stock: number;
 }
 
-const API = 'https://rogshop02.onrender.com/api';
+const API = '   http://localhost:5000/api';
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -360,6 +361,22 @@ const Cart = () => {
                   ₹
                   {(
                     item.totalBill / item.quantity
+                  ).toFixed(2)}
+                </span>
+              </div>
+
+              <div className="mobile-product-row">
+                <span className="mobile-product-label">
+                  Profit:
+                </span>
+                <span>
+                  ₹
+                  {Number(
+                    products.find(
+                      (product) =>
+                        product.productName === item.product &&
+                        product.shopkeeperId === item.shopId
+                    )?.profit ?? 0
                   ).toFixed(2)}
                 </span>
               </div>

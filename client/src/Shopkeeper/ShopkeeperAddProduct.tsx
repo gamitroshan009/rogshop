@@ -6,6 +6,7 @@ const ShopkeeperAddProduct = () => {
   const [formData, setFormData] = useState({
     productName: '',
     price: '',
+    profit: '',
     quantity: '',
     category: '',
   });
@@ -25,7 +26,7 @@ const ShopkeeperAddProduct = () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get(
-          `https://rogshop02.onrender.com/api/products-categories?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
+          `   http://localhost:5000/api/products-categories?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
         );
         setCategories(response.data.categories || []);
       } catch (error) {
@@ -39,7 +40,7 @@ const ShopkeeperAddProduct = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('https://rogshop02.onrender.com/api/products', {
+        const response = await axios.get('   http://localhost:5000/api/products', {
           params: { shopkeeperId, shopName },
         });
         setProducts(response.data || []);
@@ -64,11 +65,12 @@ const ShopkeeperAddProduct = () => {
 
     try {
       // Send product data to the backend
-      const response = await axios.post('https://rogshop02.onrender.com/api/products', {
+      const response = await axios.post('   http://localhost:5000/api/products', {
         shopkeeperId,
         shopName,
         productName: formData.productName,
         price: Number(formData.price),
+        profit: Number(formData.profit),
         quantity: Number(formData.quantity),
         category: formData.category,
       });
@@ -76,7 +78,7 @@ const ShopkeeperAddProduct = () => {
       // Update the product list with the newly added product
       setProducts([...products, response.data.product]);
       setMessage('Product added successfully');
-      setFormData({ productName: '', price: '', quantity: '', category: '' });
+      setFormData({ productName: '', price: '', profit: '', quantity: '', category: '' });
     } catch (error: any) {
       setMessage(error.response?.data?.message || 'An error occurred');
     }
@@ -94,7 +96,7 @@ const ShopkeeperAddProduct = () => {
         shopName,
         categories: [newCategory.trim()],
       };
-      const response = await axios.post('https://rogshop02.onrender.com/api/products-categories', payload);
+      const response = await axios.post('   http://localhost:5000/api/products-categories', payload);
       setCategories(response.data.shopCategories.categories);
       setCategoryMessage('Category added successfully');
       setNewCategory('');
@@ -120,7 +122,7 @@ const ShopkeeperAddProduct = () => {
         category: selectedCategoryToDelete,
       };
 
-      const response = await axios.delete('https://rogshop02.onrender.com/api/products-categories', { data: payload });
+      const response = await axios.delete('   http://localhost:5000/api/products-categories', { data: payload });
 
       // Update the categories list after deletion
       setCategories(response.data.categories);
@@ -183,6 +185,17 @@ const ShopkeeperAddProduct = () => {
           placeholder="Price"
           value={formData.price}
           onChange={handleInputChange}
+          required
+          style={inputStyle}
+        />
+        <input
+          type="number"
+          name="profit"
+          placeholder="Profit"
+          value={formData.profit}
+          onChange={handleInputChange}
+          min="0"
+          step="0.01"
           required
           style={inputStyle}
         />

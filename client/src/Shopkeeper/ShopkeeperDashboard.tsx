@@ -7,6 +7,7 @@ interface Product {
   productName: string;
   productImage: string;
   price: number;
+  profit: number;
   quantity: number;
 }
 
@@ -23,7 +24,7 @@ const ShopkeeperDashboard = () => {
     const fetchProducts = async () => {
       try {
         const response = await axios.get<Product[]>(
-          `https://rogshop02.onrender.com/api/products?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
+          `   http://localhost:5000/api/products?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
         );
         setProducts(response.data);
         setLoading(false);
@@ -44,23 +45,31 @@ const ShopkeeperDashboard = () => {
     return <p style={{ color: 'red' }}>{error}</p>;
   }
 
+  const totalProfit = products.reduce(
+    (sum, product) => sum + (product.profit || 0) * product.quantity,
+    0
+  );
+
   return (
     <div style={styles.container}>
       <h2 style={styles.heading}>{shopName}'s Products</h2>
+      <div style={styles.totalProfitCard}>
+        <strong>Total Profit:</strong>{' '}
+        <span style={styles.totalProfitAmount}>₹{totalProfit.toFixed(2)}</span>
+      </div>
       <div style={styles.productList}>
         {products.map((product) => (
           <div key={product._id} style={styles.productCard}>
-            <img
-              src={`data:image/jpeg;base64,${product.productImage}`} // Display Base64 image
-              alt={product.productName}
-              style={styles.productImage}
-            />
+            
             <h3 style={styles.productName}>{product.productName}</h3>
             <p style={styles.productDetail}>
               <strong>Price:</strong> ₹{product.price}
             </p>
             <p style={styles.productDetail}>
               <strong>Quantity:</strong> {product.quantity}
+            </p>
+            <p style={styles.productDetail}>
+              <strong>Profit:</strong> ₹{Number(product.profit || 0).toFixed(2)}
             </p>
           </div>
         ))}
@@ -84,6 +93,18 @@ const styles = {
     fontSize: '2rem',
     color: '#007bff',
     marginBottom: '1rem',
+  },
+  totalProfitCard: {
+    padding: '1rem',
+    marginBottom: '1.5rem',
+    borderRadius: '10px',
+    backgroundColor: '#eaf4ff',
+    border: '1px solid #007bff',
+    fontSize: '1.2rem',
+  },
+  totalProfitAmount: {
+    color: '#007bff',
+    fontSize: '1.4rem',
   },
   productList: {
     display: 'grid',

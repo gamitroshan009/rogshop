@@ -9,6 +9,7 @@ interface Product {
   productName: string;
   quantity: number;
   price: number;
+  profit: number;
   category: string;
 }
 
@@ -30,7 +31,7 @@ const MyOrder = () => {
     const fetchOrders = async () => {
       try {
         const response = await axios.get<Order[]>(
-          'https://rogshop02.onrender.com/api/orders',
+          '   http://localhost:5000/api/orders',
           {
             params: { email: userEmail },
           }
@@ -126,6 +127,11 @@ const MyOrder = () => {
             0
           );
 
+          const totalProfit = order.products.reduce(
+            (sum, p) => sum + (p.profit || 0) * p.quantity,
+            0
+          );
+
           // Group Products Category Wise
           const groupedProducts = order.products.reduce<
             Record<string, Product[]>
@@ -146,6 +152,13 @@ const MyOrder = () => {
           const sortedCategories = Object.keys(
             groupedProducts
           ).sort((a, b) => a.localeCompare(b));
+
+          const serialNumbers = new Map(
+            order.products.map((product, index) => [product, index + 1])
+          );
+
+          const getSerialNumber = (product: Product) =>
+            serialNumbers.get(product) || '';
 
           const isExpanded = expandedOrders.includes(
             order._id
@@ -197,6 +210,10 @@ const MyOrder = () => {
                 >
                   ₹{total}
                   <br />
+                  <span style={{ color: '#28a745', fontSize: '0.85rem' }}>
+                    Profit: ₹{totalProfit.toFixed(2)}
+                  </span>
+                  <br />
 
                   <span>
                     {isExpanded ? '▲' : '▼'}
@@ -216,6 +233,11 @@ const MyOrder = () => {
                   <p>
                     <strong>Total Qty:</strong>{' '}
                     {totalQty}
+                  </p>
+
+                  <p>
+                    <strong>Total Profit:</strong>{' '}
+                    ₹{totalProfit.toFixed(2)}
                   </p>
 
                   <p>
@@ -240,8 +262,10 @@ const MyOrder = () => {
                         }}
                       >
                         <th style={thStyle}>Product</th>
+                        <th style={thStyle}>Sr. No.</th>
                         <th style={thStyle}>Qty</th>
                         <th style={thStyle}>Price</th>
+                        <th style={thStyle}>Profit</th>
                         <th style={thStyle}>Total</th>
                       </tr>
                     </thead>
@@ -253,7 +277,7 @@ const MyOrder = () => {
                             {/* Category Heading */}
                             <tr key={category}>
                               <td
-                                colSpan={4}
+                                colSpan={6}
                                 style={{
                                   background: '#e9ecef',
                                   fontWeight: 'bold',
@@ -277,11 +301,19 @@ const MyOrder = () => {
                                 </td>
 
                                 <td style={tdStyle}>
+                                  {getSerialNumber(p)}
+                                </td>
+
+                                <td style={tdStyle}>
                                   {p.quantity}
                                 </td>
 
                                 <td style={tdStyle}>
                                   ₹{p.price}
+                                </td>
+
+                                <td style={tdStyle}>
+                                  ₹{Number(p.profit || 0).toFixed(2)}
                                 </td>
 
                                 <td style={tdStyle}>

@@ -5,6 +5,7 @@ const ShopkeeperProductsSchema = new mongoose.Schema({
   shopName: { type: String, required: true },
   productName: { type: String, required: true },
   price: { type: Number, required: true },
+  profit: { type: Number, required: true, default: 0 },
   quantity: { type: Number, required: true },
   category: { type: String, required: true }, // Add category field
 }, { timestamps: true });

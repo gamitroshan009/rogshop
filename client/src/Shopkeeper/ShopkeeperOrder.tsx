@@ -5,6 +5,7 @@ interface Product {
   productName: string;
   quantity: number;
   price: number;
+  profit: number;
   category?: string;
 }
 
@@ -31,7 +32,7 @@ const ShopkeeperOrder = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get('https://rogshop02.onrender.com/api/orders/shop', {
+        const response = await axios.get('   http://localhost:5000/api/orders/shop', {
           params: { shopName, shopId },
         });
         setOrders(response.data);
@@ -63,7 +64,7 @@ const ShopkeeperOrder = () => {
     if (!confirmComplete) return;
 
     try {
-      const response = await axios.put(`https://rogshop02.onrender.com/api/orders/${orderId}`, {
+      const response = await axios.put(`   http://localhost:5000/api/orders/${orderId}`, {
         received: 'Complete',
       });
 
@@ -119,6 +120,13 @@ const ShopkeeperOrder = () => {
             >
               <p><strong>{order.email}</strong></p>
               <p>Total: ₹{order.products.reduce((sum, p) => sum + p.price * p.quantity, 0).toFixed(2)}</p>
+              <p>
+                Total Profit: ₹
+                {order.products.reduce(
+                  (sum, p) => sum + (p.profit || 0) * p.quantity,
+                  0
+                ).toFixed(2)}
+              </p>
             </div>
           ))}
         </div>
@@ -188,18 +196,28 @@ const ShopkeeperOrder = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f9f9f9' }}>
+                      <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Sr. No.</th>
                       <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Product</th>
                       <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Qty</th>
                       <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Price</th>
+                      <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Profit</th>
                       <th style={{ padding: '0.5rem', border: '1px solid #ddd' }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {products.map((product, i) => (
                       <tr key={i}>
+                        <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>
+                          {selectedOrder.products.findIndex((item) =>
+                            item.productName === product.productName &&
+                            item.quantity === product.quantity &&
+                            item.price === product.price
+                          ) + 1}
+                        </td>
                         <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>{product.productName}</td>
                         <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>{product.quantity}</td>
                         <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>₹{product.price}</td>
+                        <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>₹{Number(product.profit || 0).toFixed(2)}</td>
                         <td style={{ padding: '0.5rem', border: '1px solid #ddd' }}>
                           ₹{(product.quantity * product.price).toFixed(2)}
                         </td>
@@ -215,6 +233,13 @@ const ShopkeeperOrder = () => {
             </p>
             <p>
               <strong>Total Price:</strong> ₹{selectedOrder.products.reduce((sum, p) => sum + p.price * p.quantity, 0).toFixed(2)}
+            </p>
+            <p>
+              <strong>Total Profit:</strong>{' '}
+              ₹{selectedOrder.products.reduce(
+                (sum, p) => sum + (p.profit || 0) * p.quantity,
+                0
+              ).toFixed(2)}
             </p>
 
             {selectedOrder.received.toLowerCase() !== 'complete' && (
