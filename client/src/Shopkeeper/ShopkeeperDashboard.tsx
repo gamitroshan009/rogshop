@@ -24,7 +24,7 @@ const ShopkeeperDashboard = () => {
     const fetchProducts = async () => {
       try {
         const response = await axios.get<Product[]>(
-          `   http://localhost:5000/api/products?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
+          `   https://rogshop02.onrender.com/api/products?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
         );
         setProducts(response.data);
         setLoading(false);

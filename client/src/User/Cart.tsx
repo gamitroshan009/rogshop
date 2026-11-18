@@ -26,7 +26,7 @@ interface MergedCartItem extends CartItem {
   stock: number;
 }
 
-const API = '   http://localhost:5000/api';
+const API = '   https://rogshop02.onrender.com/api';
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);

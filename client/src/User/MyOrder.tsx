@@ -31,7 +31,7 @@ const MyOrder = () => {
     const fetchOrders = async () => {
       try {
         const response = await axios.get<Order[]>(
-          '   http://localhost:5000/api/orders',
+          '   https://rogshop02.onrender.com/api/orders',
           {
             params: { email: userEmail },
           }

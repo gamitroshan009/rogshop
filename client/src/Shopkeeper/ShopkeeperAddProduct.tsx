@@ -26,7 +26,7 @@ const ShopkeeperAddProduct = () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get(
-          `   http://localhost:5000/api/products-categories?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
+          `   https://rogshop02.onrender.com/api/products-categories?shopkeeperId=${shopkeeperId}&shopName=${shopName}`
         );
         setCategories(response.data.categories || []);
       } catch (error) {
@@ -40,7 +40,7 @@ const ShopkeeperAddProduct = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('   http://localhost:5000/api/products', {
+        const response = await axios.get('   https://rogshop02.onrender.com/api/products', {
           params: { shopkeeperId, shopName },
         });
         setProducts(response.data || []);
@@ -65,7 +65,7 @@ const ShopkeeperAddProduct = () => {
 
     try {
       // Send product data to the backend
-      const response = await axios.post('   http://localhost:5000/api/products', {
+      const response = await axios.post('   https://rogshop02.onrender.com/api/products', {
         shopkeeperId,
         shopName,
         productName: formData.productName,
@@ -96,7 +96,7 @@ const ShopkeeperAddProduct = () => {
         shopName,
         categories: [newCategory.trim()],
       };
-      const response = await axios.post('   http://localhost:5000/api/products-categories', payload);
+      const response = await axios.post('   https://rogshop02.onrender.com/api/products-categories', payload);
       setCategories(response.data.shopCategories.categories);
       setCategoryMessage('Category added successfully');
       setNewCategory('');
@@ -122,7 +122,7 @@ const ShopkeeperAddProduct = () => {
         category: selectedCategoryToDelete,
       };
 
-      const response = await axios.delete('   http://localhost:5000/api/products-categories', { data: payload });
+      const response = await axios.delete('   https://rogshop02.onrender.com/api/products-categories', { data: payload });
 
       // Update the categories list after deletion
       setCategories(response.data.categories);

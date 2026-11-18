@@ -28,7 +28,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get<Order[]>('   http://localhost:5000/api/admin/orders');
+        const response = await axios.get<Order[]>('   https://rogshop02.onrender.com/api/admin/orders');
         const sorted = response.data.sort((a,) => (a.received === 'pending' ? -1 : 1));
         setOrders(sorted);
         setFilteredOrders(sorted);
