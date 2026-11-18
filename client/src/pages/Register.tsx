@@ -23,7 +23,7 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post('   http://localhost:5000/api/auth/register', formData);
+      const response = await axios.post('   https://rogshop02.onrender.com/api/auth/register', formData);
       setMessage(response.data.message);
       setTimeout(() => navigate('/login'), 2000);
     } catch (error: any) {

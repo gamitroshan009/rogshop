@@ -38,7 +38,7 @@ const ShopkeeperDashboard = () => {
         setError('');
 
         const response = await axios.get<Product[]>(
-          'http://localhost:5000/api/products',
+          'https://rogshop02.onrender.com/api/products',
           {
             params: {
               shopkeeperId,

@@ -12,7 +12,7 @@ interface Product {
   newCategory?: string;
 }
 
-const API_URL = 'http://localhost:5000';
+const API_URL = 'https://rogshop02.onrender.com';
 
 const ManageProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -107,13 +107,13 @@ const ManageProducts = () => {
         );
 
         if (isActive) {
-          const terms = (response.data.terms || [])
+          const terms: string[] = ((response.data.terms as string[]) || [])
             .map((term: string) =>
               term.normalize('NFC').trim().toLowerCase()
             )
             .filter(Boolean);
 
-          setTranslatedTerms([...new Set(terms)]);
+          setTranslatedTerms(Array.from(new Set<string>(terms)));
         }
       } catch (err) {
         console.error('Smart search error:', err);

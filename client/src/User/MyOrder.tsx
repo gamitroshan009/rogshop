@@ -23,7 +23,7 @@ interface Order {
   createdAt: string;
 }
 
-const API = 'http://localhost:5000/api';
+const API = 'https://rogshop02.onrender.com/api';
 
 const MyOrder: React.FC = () => {
   const navigate = useNavigate();

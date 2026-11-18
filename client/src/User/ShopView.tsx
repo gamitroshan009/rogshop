@@ -48,7 +48,7 @@ const ShopView: React.FC = () => {
 
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/products?shopkeeperId=${shopId}&shopName=${encodeURIComponent(shopName)}`
+          `https://rogshop02.onrender.com/api/products?shopkeeperId=${shopId}&shopName=${encodeURIComponent(shopName)}`
         );
 
         setProducts(response.data);
@@ -70,7 +70,7 @@ const ShopView: React.FC = () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/products-categories?shopkeeperId=${shopId}&shopName=${encodeURIComponent(shopName)}`
+          `https://rogshop02.onrender.com/api/products-categories?shopkeeperId=${shopId}&shopName=${encodeURIComponent(shopName)}`
         );
 
         setCategories(response.data.categories || []);
@@ -149,7 +149,7 @@ const ShopView: React.FC = () => {
         };
 
         await axios.post(
-          'http://localhost:5000/api/cart',
+          'https://rogshop02.onrender.com/api/cart',
           cartItem
         );
 
